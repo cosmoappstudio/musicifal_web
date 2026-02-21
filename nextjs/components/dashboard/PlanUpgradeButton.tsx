@@ -4,13 +4,13 @@ import { useTranslations } from 'next-intl';
 import UpgradeButton from '@/components/UpgradeButton';
 
 interface PlanUpgradeButtonProps {
-  currentPlan: 'free' | 'starter' | 'pro';
+  currentPlan: 'free' | 'weekly' | 'monthly' | 'yearly';
 }
 
 export default function PlanUpgradeButton({ currentPlan }: PlanUpgradeButtonProps) {
   const t = useTranslations('settings');
-  if (currentPlan === 'pro') return null;
-  const nextPlan = currentPlan === 'free' ? 'starter' : 'pro';
+  if (currentPlan === 'yearly') return null;
+  const nextPlan = currentPlan === 'free' ? 'monthly' : currentPlan === 'weekly' ? 'monthly' : 'yearly';
 
   return (
     <UpgradeButton

@@ -166,7 +166,7 @@ export default function FortuneFullScreen() {
                     <Lock className="w-5 h-5 text-[#D97706] mx-auto mb-2" />
                     <p className="text-sm text-[#A598C7]">{dashT('fortuneBlurred')}</p>
                     <UpgradeButton
-                      plan="starter"
+                      plan="monthly"
                       className="mt-3 inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-[#D97706] to-[#F59E0B] text-white text-xs font-bold px-4 py-2 rounded-lg hover:opacity-90"
                     >
                       {dashT('upgradeForFortune')}

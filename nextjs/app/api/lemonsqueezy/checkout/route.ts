@@ -1,7 +1,7 @@
 /**
  * Create Lemon Squeezy checkout for plan upgrade
  * POST /api/lemonsqueezy/checkout
- * Body: { plan: 'starter' | 'pro' }
+ * Body: { plan: 'weekly' | 'monthly' | 'yearly' }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
   }
 
   const plan = body.plan as Plan | undefined;
-  if (plan !== 'starter' && plan !== 'pro') {
-    return NextResponse.json({ error: 'Invalid plan. Use starter or pro.' }, { status: 400 });
+  if (plan !== 'weekly' && plan !== 'monthly' && plan !== 'yearly') {
+    return NextResponse.json({ error: 'Invalid plan. Use weekly, monthly or yearly.' }, { status: 400 });
   }
 
   const supabase = createServiceClient();

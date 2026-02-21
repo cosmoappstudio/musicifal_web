@@ -238,14 +238,18 @@ export default function AppSettings() {
 
       {/* Pricing */}
       <Section title={t('pricingTitle')} icon={CreditCard} delay={0.2}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="text-xs text-[#A598C7] mb-1.5 block">{t('starterMonthlyUSD')}</label>
-            <input type="number" step="0.01" value={settings.pricing.starterMonthlyUSD} onChange={(e) => setSettings((s) => ({ ...s, pricing: { ...s.pricing, starterMonthlyUSD: +e.target.value } }))} className={inputClass} />
+            <label className="text-xs text-[#A598C7] mb-1.5 block">{t('weeklyUSD')}</label>
+            <input type="number" step="0.01" value={settings.pricing.weeklyUSD} onChange={(e) => setSettings((s) => ({ ...s, pricing: { ...s.pricing, weeklyUSD: +e.target.value } }))} className={inputClass} />
           </div>
           <div>
-            <label className="text-xs text-[#A598C7] mb-1.5 block">{t('proMonthlyUSD')}</label>
-            <input type="number" step="0.01" value={settings.pricing.proMonthlyUSD} onChange={(e) => setSettings((s) => ({ ...s, pricing: { ...s.pricing, proMonthlyUSD: +e.target.value } }))} className={inputClass} />
+            <label className="text-xs text-[#A598C7] mb-1.5 block">{t('monthlyUSD')}</label>
+            <input type="number" step="0.01" value={settings.pricing.monthlyUSD} onChange={(e) => setSettings((s) => ({ ...s, pricing: { ...s.pricing, monthlyUSD: +e.target.value } }))} className={inputClass} />
+          </div>
+          <div>
+            <label className="text-xs text-[#A598C7] mb-1.5 block">{t('yearlyUSD')}</label>
+            <input type="number" step="0.01" value={settings.pricing.yearlyUSD} onChange={(e) => setSettings((s) => ({ ...s, pricing: { ...s.pricing, yearlyUSD: +e.target.value } }))} className={inputClass} />
           </div>
         </div>
         <Separator className="bg-white/[0.06]" />

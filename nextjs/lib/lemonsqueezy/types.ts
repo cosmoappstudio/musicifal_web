@@ -3,7 +3,7 @@
  * @see https://docs.lemonsqueezy.com
  */
 
-export type Plan = 'free' | 'starter' | 'pro';
+export type Plan = 'free' | 'weekly' | 'monthly' | 'yearly';
 
 export type LemonSqueezyWebhookEvent =
   | 'order_created'

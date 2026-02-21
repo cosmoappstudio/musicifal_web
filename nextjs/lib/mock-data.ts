@@ -20,7 +20,7 @@ export const mockUser: MockUser = {
   email: 'ayse.kaya@example.com',
   avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ayse&backgroundColor=7C3AED',
   spotifyConnected: true,
-  plan: 'pro',
+  plan: 'yearly',
   joinedAt: '2024-11-15T10:30:00Z',
   lastAnalyzedAt: '2025-02-19T14:22:00Z',
 };
@@ -172,60 +172,60 @@ export const mockAdminStats: MockAdminStats = {
     { country: 'İngiltere', users: 289, percentage: 5.9 },
     { country: 'Diğer', users: 300, percentage: 6.2 },
   ],
-  planDistribution: { free: 3531, starter: 891, pro: 450 },
+  planDistribution: { free: 3531, weekly: 420, monthly: 891, yearly: 450 },
 };
 
 // ─── Admin Users ───────────────────────────────────────────────────────────────
 
 export const mockAdminUsers: AdminUser[] = [
-  { id: 'u1', name: 'Ayşe Kaya', email: 'ayse@example.com', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ayse', plan: 'pro', joinedAt: '2024-11-15', lastLogin: '2025-02-21', source: 'spotify', fortuneCount: 24, status: 'active', gender: 'female' },
-  { id: 'u2', name: 'Mehmet Demir', email: 'mehmet@example.com', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mehmet', plan: 'starter', joinedAt: '2024-12-03', lastLogin: '2025-02-20', source: 'spotify', fortuneCount: 8, status: 'active', gender: 'male' },
+  { id: 'u1', name: 'Ayşe Kaya', email: 'ayse@example.com', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ayse', plan: 'yearly', joinedAt: '2024-11-15', lastLogin: '2025-02-21', source: 'spotify', fortuneCount: 24, status: 'active', gender: 'female' },
+  { id: 'u2', name: 'Mehmet Demir', email: 'mehmet@example.com', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mehmet', plan: 'monthly', joinedAt: '2024-12-03', lastLogin: '2025-02-20', source: 'spotify', fortuneCount: 8, status: 'active', gender: 'male' },
   { id: 'u3', name: 'Selin Yılmaz', email: 'selin@example.com', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Selin', plan: 'free', joinedAt: '2025-01-10', lastLogin: '2025-02-19', source: 'spotify', fortuneCount: 1, status: 'active', gender: 'female' },
-  { id: 'u4', name: 'Can Öztürk', email: 'can@example.com', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Can', plan: 'pro', joinedAt: '2024-10-22', lastLogin: '2025-02-21', source: 'spotify', fortuneCount: 31, status: 'active', gender: 'male' },
-  { id: 'u5', name: 'Zeynep Arslan', email: 'zeynep@example.com', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Zeynep', plan: 'starter', joinedAt: '2025-01-28', lastLogin: '2025-02-18', source: 'direct', fortuneCount: 3, status: 'active', gender: 'female' },
+  { id: 'u4', name: 'Can Öztürk', email: 'can@example.com', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Can', plan: 'yearly', joinedAt: '2024-10-22', lastLogin: '2025-02-21', source: 'spotify', fortuneCount: 31, status: 'active', gender: 'male' },
+  { id: 'u5', name: 'Zeynep Arslan', email: 'zeynep@example.com', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Zeynep', plan: 'weekly', joinedAt: '2025-01-28', lastLogin: '2025-02-18', source: 'direct', fortuneCount: 3, status: 'active', gender: 'female' },
   { id: 'u6', name: 'Burak Çelik', email: 'burak@example.com', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Burak', plan: 'free', joinedAt: '2025-02-01', lastLogin: '2025-02-15', source: 'spotify', fortuneCount: 1, status: 'suspended', gender: 'male' },
-  { id: 'u7', name: 'Fatma Şahin', email: 'fatma@example.com', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Fatma', plan: 'pro', joinedAt: '2024-09-14', lastLogin: '2025-02-21', source: 'spotify', fortuneCount: 48, status: 'active', gender: 'female' },
+  { id: 'u7', name: 'Fatma Şahin', email: 'fatma@example.com', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Fatma', plan: 'yearly', joinedAt: '2024-09-14', lastLogin: '2025-02-21', source: 'spotify', fortuneCount: 48, status: 'active', gender: 'female' },
   { id: 'u8', name: 'Emre Koç', email: 'emre@example.com', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emre', plan: 'free', joinedAt: '2025-02-10', lastLogin: '2025-02-17', source: 'spotify', fortuneCount: 1, status: 'active', gender: 'male' },
 ];
 
 // ─── Admin Analyses ────────────────────────────────────────────────────────────
 
 export const mockAdminAnalyses: AdminAnalysis[] = [
-  { id: 'a1', userId: 'u1', userName: 'Ayşe Kaya', userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ayse', analyzedAt: '2025-02-19T14:22:00Z', platform: 'spotify', plan: 'pro', dominantGenre: 'Indie Pop', processingMs: 1240, gender: 'female' },
-  { id: 'a2', userId: 'u4', userName: 'Can Öztürk', userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Can', analyzedAt: '2025-02-20T09:11:00Z', platform: 'spotify', plan: 'pro', dominantGenre: 'Phonk', processingMs: 1180, gender: 'male' },
-  { id: 'a3', userId: 'u2', userName: 'Mehmet Demir', userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mehmet', analyzedAt: '2025-02-20T16:45:00Z', platform: 'spotify', plan: 'starter', dominantGenre: 'Pop', processingMs: 1520, gender: 'male' },
-  { id: 'a4', userId: 'u7', userName: 'Fatma Şahin', userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Fatma', analyzedAt: '2025-02-21T07:33:00Z', platform: 'spotify', plan: 'pro', dominantGenre: 'R&B', processingMs: 1090, gender: 'female' },
+  { id: 'a1', userId: 'u1', userName: 'Ayşe Kaya', userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ayse', analyzedAt: '2025-02-19T14:22:00Z', platform: 'spotify', plan: 'yearly', dominantGenre: 'Indie Pop', processingMs: 1240, gender: 'female' },
+  { id: 'a2', userId: 'u4', userName: 'Can Öztürk', userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Can', analyzedAt: '2025-02-20T09:11:00Z', platform: 'spotify', plan: 'yearly', dominantGenre: 'Phonk', processingMs: 1180, gender: 'male' },
+  { id: 'a3', userId: 'u2', userName: 'Mehmet Demir', userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mehmet', analyzedAt: '2025-02-20T16:45:00Z', platform: 'spotify', plan: 'monthly', dominantGenre: 'Pop', processingMs: 1520, gender: 'male' },
+  { id: 'a4', userId: 'u7', userName: 'Fatma Şahin', userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Fatma', analyzedAt: '2025-02-21T07:33:00Z', platform: 'spotify', plan: 'yearly', dominantGenre: 'R&B', processingMs: 1090, gender: 'female' },
   { id: 'a5', userId: 'u3', userName: 'Selin Yılmaz', userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Selin', analyzedAt: '2025-02-21T11:20:00Z', platform: 'spotify', plan: 'free', dominantGenre: 'Lo-fi', processingMs: 980, gender: 'female' },
 ];
 
 // ─── Admin Fortunes ────────────────────────────────────────────────────────────
 
 export const mockAdminFortunes: AdminFortune[] = [
-  { id: 'f1', userId: 'u1', userName: 'Ayşe Kaya', generatedAt: '2025-02-19T14:23:00Z', plan: 'pro', language: 'tr', preview: 'Gecenin Phonk\'u seni ele veriyor...', featured: true },
-  { id: 'f2', userId: 'u4', userName: 'Can Öztürk', generatedAt: '2025-02-20T09:12:00Z', plan: 'pro', language: 'en', preview: 'The rhythm of your nights speaks volumes...', featured: false },
-  { id: 'f3', userId: 'u7', userName: 'Fatma Şahin', generatedAt: '2025-02-21T07:34:00Z', plan: 'pro', language: 'tr', preview: 'R&B akşamların sır veriyor...', featured: true },
-  { id: 'f4', userId: 'u2', userName: 'Mehmet Demir', generatedAt: '2025-02-20T16:46:00Z', plan: 'starter', language: 'tr', preview: 'Hafta sonları Pop müziğe dönüşün...', featured: false },
-  { id: 'f5', userId: 'u5', userName: 'Zeynep Arslan', generatedAt: '2025-02-18T20:11:00Z', plan: 'starter', language: 'de', preview: 'Deine Musikreise zeigt...', featured: false },
+  { id: 'f1', userId: 'u1', userName: 'Ayşe Kaya', generatedAt: '2025-02-19T14:23:00Z', plan: 'yearly', language: 'tr', preview: 'Gecenin Phonk\'u seni ele veriyor...', featured: true },
+  { id: 'f2', userId: 'u4', userName: 'Can Öztürk', generatedAt: '2025-02-20T09:12:00Z', plan: 'yearly', language: 'en', preview: 'The rhythm of your nights speaks volumes...', featured: false },
+  { id: 'f3', userId: 'u7', userName: 'Fatma Şahin', generatedAt: '2025-02-21T07:34:00Z', plan: 'yearly', language: 'tr', preview: 'R&B akşamların sır veriyor...', featured: true },
+  { id: 'f4', userId: 'u2', userName: 'Mehmet Demir', generatedAt: '2025-02-20T16:46:00Z', plan: 'monthly', language: 'tr', preview: 'Hafta sonları Pop müziğe dönüşün...', featured: false },
+  { id: 'f5', userId: 'u5', userName: 'Zeynep Arslan', generatedAt: '2025-02-18T20:11:00Z', plan: 'weekly', language: 'de', preview: 'Deine Musikreise zeigt...', featured: false },
 ];
 
 // ─── Admin Revenue ─────────────────────────────────────────────────────────────
 
 export const mockRevenueData: AdminRevenue[] = [
-  { month: 'Eyl 24', revenue: 3200, starter: 1800, pro: 1400 },
-  { month: 'Eki 24', revenue: 4800, starter: 2400, pro: 2400 },
-  { month: 'Kas 24', revenue: 6200, starter: 2900, pro: 3300 },
-  { month: 'Ara 24', revenue: 7800, starter: 3200, pro: 4600 },
-  { month: 'Oca 25', revenue: 9400, starter: 3800, pro: 5600 },
-  { month: 'Şub 25', revenue: 12480, starter: 4480, pro: 8000 },
+  { month: 'Eyl 24', revenue: 3200, weekly: 600, monthly: 1800, yearly: 800 },
+  { month: 'Eki 24', revenue: 4800, weekly: 800, monthly: 2400, yearly: 1600 },
+  { month: 'Kas 24', revenue: 6200, weekly: 900, monthly: 2900, yearly: 2400 },
+  { month: 'Ara 24', revenue: 7800, weekly: 1000, monthly: 3200, yearly: 3600 },
+  { month: 'Oca 25', revenue: 9400, weekly: 1200, monthly: 3800, yearly: 4400 },
+  { month: 'Şub 25', revenue: 12480, weekly: 1480, monthly: 4480, yearly: 6520 },
 ];
 
 export const mockTransactions: Transaction[] = [
-  { id: 'tx1', userName: 'Ayşe Kaya', plan: 'pro', amount: 9.99, currency: 'USD', date: '2025-02-15', status: 'completed' },
-  { id: 'tx2', userName: 'Can Öztürk', plan: 'pro', amount: 9.99, currency: 'USD', date: '2025-02-14', status: 'completed' },
-  { id: 'tx3', userName: 'Fatma Şahin', plan: 'pro', amount: 9.99, currency: 'USD', date: '2025-02-14', status: 'completed' },
-  { id: 'tx4', userName: 'Mehmet Demir', plan: 'starter', amount: 4.99, currency: 'USD', date: '2025-02-13', status: 'completed' },
-  { id: 'tx5', userName: 'Zeynep Arslan', plan: 'starter', amount: 4.99, currency: 'USD', date: '2025-02-12', status: 'completed' },
-  { id: 'tx6', userName: 'Ahmet Yıldız', plan: 'pro', amount: 9.99, currency: 'USD', date: '2025-02-11', status: 'refunded' },
+  { id: 'tx1', userName: 'Ayşe Kaya', plan: 'yearly', amount: 39.99, currency: 'USD', date: '2025-02-15', status: 'completed' },
+  { id: 'tx2', userName: 'Can Öztürk', plan: 'yearly', amount: 39.99, currency: 'USD', date: '2025-02-14', status: 'completed' },
+  { id: 'tx3', userName: 'Fatma Şahin', plan: 'yearly', amount: 39.99, currency: 'USD', date: '2025-02-14', status: 'completed' },
+  { id: 'tx4', userName: 'Mehmet Demir', plan: 'monthly', amount: 4.99, currency: 'USD', date: '2025-02-13', status: 'completed' },
+  { id: 'tx5', userName: 'Zeynep Arslan', plan: 'weekly', amount: 1.99, currency: 'USD', date: '2025-02-12', status: 'completed' },
+  { id: 'tx6', userName: 'Ahmet Yıldız', plan: 'yearly', amount: 39.99, currency: 'USD', date: '2025-02-11', status: 'refunded' },
 ];
 
 // ─── Admin Analytics (User Fortune Aggregations) ────────────────────────────────
@@ -266,8 +266,9 @@ export const mockAppSettings: AppSettings = {
     testMode: false,
   },
   pricing: {
-    starterMonthlyUSD: 4.99,
-    proMonthlyUSD: 9.99,
+    weeklyUSD: 1.99,
+    monthlyUSD: 4.99,
+    yearlyUSD: 39.99,
     activeCoupon: 'MUZIK25',
     couponDiscount: 25,
   },

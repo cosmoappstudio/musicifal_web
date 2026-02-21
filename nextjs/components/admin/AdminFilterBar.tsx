@@ -7,7 +7,7 @@ import { useAdminFilters } from '@/context/AdminFilterContext';
 import type { AdminFilters, Plan } from '@/types';
 import { mockAnalytics } from '@/lib/mock-data';
 
-const PLANS: (Plan | 'all')[] = ['all', 'free', 'starter', 'pro'];
+const PLANS: (Plan | 'all')[] = ['all', 'free', 'weekly', 'monthly', 'yearly'];
 const PLATFORMS: Array<AdminFilters['platform']> = ['all', 'spotify'];
 const GENDERS: Array<AdminFilters['gender']> = ['all', 'male', 'female', 'other'];
 
@@ -59,7 +59,7 @@ export default function AdminFilterBar() {
     </div>
   );
 
-  const planLabel = (p: string) => (p === 'all' ? t('all') : p === 'free' ? tCommon('free') : p.toUpperCase());
+  const planLabel = (p: string) => (p === 'all' ? t('all') : p === 'free' ? tCommon('free') : p.charAt(0).toUpperCase() + p.slice(1));
   const platformLabel = (p: string) => (p === 'all' ? t('all') : tCommon('spotify'));
   const genderLabel = (g: string) =>
     g === 'all' ? t('all') : g === 'male' ? tAnalytics('male') : g === 'female' ? tAnalytics('female') : tAnalytics('other');

@@ -92,7 +92,8 @@ export default function AdminRevenueContent() {
               </div>
               <span
                 className={`text-xs px-2 py-0.5 rounded-full font-semibold uppercase ${
-                  tx.plan === 'pro' ? 'bg-[#D97706]/10 text-[#F59E0B]' : 'bg-[#7C3AED]/10 text-[#A855F7]'
+                  tx.plan === 'yearly' ? 'bg-[#D97706]/10 text-[#F59E0B]' :
+                  tx.plan === 'monthly' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-[#7C3AED]/10 text-[#A855F7]'
                 }`}
               >
                 {tx.plan}

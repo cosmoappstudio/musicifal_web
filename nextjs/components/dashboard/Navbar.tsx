@@ -19,8 +19,9 @@ import LocaleSwitcher from '@/components/ui/LocaleSwitcher';
 
 const PLAN_COLORS = {
   free: 'bg-white/10 text-white/60',
-  starter: 'bg-[#7C3AED]/20 text-[#A855F7] border border-[#7C3AED]/30',
-  pro: 'bg-gradient-to-r from-[#D97706]/20 to-[#F59E0B]/20 text-[#F59E0B] border border-[#D97706]/40',
+  weekly: 'bg-[#7C3AED]/20 text-[#A855F7] border border-[#7C3AED]/30',
+  monthly: 'bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/30',
+  yearly: 'bg-gradient-to-r from-[#D97706]/20 to-[#F59E0B]/20 text-[#F59E0B] border border-[#D97706]/40',
 };
 
 export default function Navbar({ locale }: { locale: string }) {
@@ -84,7 +85,7 @@ export default function Navbar({ locale }: { locale: string }) {
 
             {/* Plan badge */}
             <span className={`hidden sm:inline-flex text-xs px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider ${PLAN_COLORS[mockUser.plan]}`}>
-              {mockUser.plan === 'pro' && <Zap className="w-3 h-3 mr-1" />}
+              {mockUser.plan === 'yearly' && <Zap className="w-3 h-3 mr-1" />}
               {mockUser.plan}
             </span>
 

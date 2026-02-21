@@ -40,7 +40,7 @@ export default function UpgradeBanner() {
 
         <div className="flex items-center gap-2">
           <UpgradeButton
-            plan="starter"
+            plan="monthly"
             className="inline-flex items-center gap-1.5 bg-gradient-to-r from-[#D97706] to-[#F59E0B] text-white text-xs font-bold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
           >
             <Zap className="w-3 h-3" />

@@ -20,7 +20,7 @@ export interface Database {
           email: string | null;
           name: string | null;
           avatar_url: string | null;
-          plan: 'free' | 'starter' | 'pro';
+          plan: 'free' | 'weekly' | 'monthly' | 'yearly';
           created_at: string;
           updated_at: string;
         };
@@ -30,7 +30,7 @@ export interface Database {
           email?: string | null;
           name?: string | null;
           avatar_url?: string | null;
-          plan?: 'free' | 'starter' | 'pro';
+          plan?: 'free' | 'weekly' | 'monthly' | 'yearly';
           created_at?: string;
           updated_at?: string;
         };

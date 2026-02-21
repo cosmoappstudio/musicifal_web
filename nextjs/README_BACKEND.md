@@ -55,7 +55,7 @@
    - URL: `https://musicifal.app/api/webhooks/lemonsqueezy`
    - Events: `order_created`, `subscription_created`, `subscription_updated`, `subscription_cancelled`, `subscription_expired`, `subscription_payment_success`, `subscription_payment_failed`
    - Signing secret oluşturup `LEMONSQUEEZY_WEBHOOK_SECRET` olarak ekleyin.
-5. Env: `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_VARIANT_STARTER`, `LEMONSQUEEZY_VARIANT_PRO`, `LEMONSQUEEZY_WEBHOOK_SECRET`
+5. Env: `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_VARIANT_WEEKLY`, `LEMONSQUEEZY_VARIANT_MONTHLY`, `LEMONSQUEEZY_VARIANT_YEARLY`, `LEMONSQUEEZY_WEBHOOK_SECRET`
 
 ## API Routes
 

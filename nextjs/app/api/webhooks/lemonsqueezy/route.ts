@@ -11,8 +11,9 @@ import type { LemonSqueezyWebhookPayload, Plan } from '@/lib/lemonsqueezy/types'
 
 function getPlanFromVariantOrProduct(variantName?: string, productName?: string): Plan | null {
   const s = (variantName ?? productName ?? '').toLowerCase();
-  if (s.includes('pro')) return 'pro';
-  if (s.includes('starter')) return 'starter';
+  if (s.includes('yearly')) return 'yearly';
+  if (s.includes('monthly')) return 'monthly';
+  if (s.includes('weekly')) return 'weekly';
   return null;
 }
 

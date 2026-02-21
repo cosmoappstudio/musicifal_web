@@ -26,8 +26,9 @@ import type { Plan } from '@/types';
 
 const PLAN_STYLES: Record<Plan, string> = {
   free: 'bg-white/5 text-white/50 border-white/10',
-  starter: 'bg-[#7C3AED]/10 text-[#A855F7] border-[#7C3AED]/20',
-  pro: 'bg-[#D97706]/10 text-[#F59E0B] border-[#D97706]/20',
+  weekly: 'bg-[#7C3AED]/10 text-[#A855F7] border-[#7C3AED]/20',
+  monthly: 'bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20',
+  yearly: 'bg-[#D97706]/10 text-[#F59E0B] border-[#D97706]/20',
 };
 
 export default function UsersTable() {

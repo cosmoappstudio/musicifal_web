@@ -11,8 +11,9 @@ type Props = {
 
 const PLAN_INFO = {
   free: { label: 'Ücretsiz', color: 'text-white/60', bg: 'bg-white/5 border-white/10' },
-  starter: { label: 'Starter', color: 'text-[#A855F7]', bg: 'bg-[#7C3AED]/10 border-[#7C3AED]/20' },
-  pro: { label: 'PRO', color: 'text-[#F59E0B]', bg: 'bg-[#D97706]/10 border-[#D97706]/20' },
+  weekly: { label: 'Haftalık', color: 'text-[#A855F7]', bg: 'bg-[#7C3AED]/10 border-[#7C3AED]/20' },
+  monthly: { label: 'Aylık', color: 'text-[#10B981]', bg: 'bg-[#10B981]/10 border-[#10B981]/20' },
+  yearly: { label: 'Yıllık', color: 'text-[#F59E0B]', bg: 'bg-[#D97706]/10 border-[#D97706]/20' },
 };
 
 export default async function SettingsPage({ params }: Props) {
@@ -112,7 +113,7 @@ export default async function SettingsPage({ params }: Props) {
                   <p className="text-xs text-[#A598C7]">{t('currentPlan')}</p>
                 </div>
               </div>
-              {mockUser.plan !== 'pro' && (
+              {mockUser.plan !== 'yearly' && (
                 <PlanUpgradeButton currentPlan={mockUser.plan} />
               )}
             </div>

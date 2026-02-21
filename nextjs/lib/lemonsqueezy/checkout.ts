@@ -7,8 +7,9 @@ import type { Plan } from './types';
 
 // Variant IDs from Lemon Squeezy Dashboard (Products > Variants)
 const VARIANT_IDS: Record<Exclude<Plan, 'free'>, string> = {
-  starter: process.env.LEMONSQUEEZY_VARIANT_STARTER ?? '',
-  pro: process.env.LEMONSQUEEZY_VARIANT_PRO ?? '',
+  weekly: process.env.LEMONSQUEEZY_VARIANT_WEEKLY ?? '',
+  monthly: process.env.LEMONSQUEEZY_VARIANT_MONTHLY ?? '',
+  yearly: process.env.LEMONSQUEEZY_VARIANT_YEARLY ?? '',
 };
 
 export async function getCheckoutUrl(

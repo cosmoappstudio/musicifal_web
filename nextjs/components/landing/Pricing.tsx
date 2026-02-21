@@ -11,26 +11,38 @@ const PLANS = [
   {
     key: 'free',
     priceUSD: '0',
+    pricePeriod: 'month',
     features: ['freeFeature1', 'freeFeature2', 'freeFeature3', 'freeFeature4', 'freeFeature5', 'freeFeature6', 'freeFeature7'],
     cta: 'getStarted',
     highlighted: false,
     gold: false,
   },
   {
-    key: 'starter',
-    priceUSD: '4.99',
-    features: ['starterFeature1', 'starterFeature2', 'starterFeature3', 'starterFeature4', 'starterFeature5', 'starterFeature6', 'starterFeature7', 'starterFeature8'],
+    key: 'weekly',
+    priceUSD: '1.99',
+    pricePeriod: 'week',
+    features: ['weeklyFeature1', 'weeklyFeature2', 'weeklyFeature3', 'weeklyFeature4', 'weeklyFeature5'],
     cta: 'upgrade',
     highlighted: false,
     gold: false,
   },
   {
-    key: 'pro',
-    priceUSD: '9.99',
-    features: ['proFeature1', 'proFeature2', 'proFeature3', 'proFeature4', 'proFeature5', 'proFeature6', 'proFeature7'],
+    key: 'monthly',
+    priceUSD: '4.99',
+    pricePeriod: 'month',
+    features: ['monthlyFeature1', 'monthlyFeature2', 'monthlyFeature3', 'monthlyFeature4', 'monthlyFeature5', 'monthlyFeature6'],
     cta: 'upgrade',
     highlighted: true,
     gold: true,
+  },
+  {
+    key: 'yearly',
+    priceUSD: '39.99',
+    pricePeriod: 'year',
+    features: ['yearlyFeature1', 'yearlyFeature2', 'yearlyFeature3', 'yearlyFeature4', 'yearlyFeature5', 'yearlyFeature6'],
+    cta: 'upgrade',
+    highlighted: false,
+    gold: false,
   },
 ];
 
@@ -52,7 +64,7 @@ export default function Pricing() {
           <p className="text-[#A598C7]">{tLanding('pricingSubtitle')}</p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-center">
           {PLANS.map((plan, i) => (
             <motion.div
               key={plan.key}
@@ -90,7 +102,7 @@ export default function Pricing() {
                     {plan.priceUSD === '0' ? t('free') : `$${plan.priceUSD}`}
                   </span>
                   {plan.priceUSD !== '0' && (
-                    <span className="text-sm text-[#A598C7]">/{t('month')}</span>
+                    <span className="text-sm text-[#A598C7]">/{t(plan.pricePeriod as 'week' | 'month' | 'year')}</span>
                   )}
                 </div>
               </div>
@@ -119,7 +131,7 @@ export default function Pricing() {
                 </Link>
               ) : (
                 <UpgradeButton
-                  plan={plan.key as 'starter' | 'pro'}
+                  plan={plan.key as 'weekly' | 'monthly' | 'yearly'}
                   className={`block text-center font-bold py-3 rounded-xl text-sm transition-all w-full ${
                     plan.highlighted
                       ? 'bg-gradient-to-r from-[#D97706] to-[#F59E0B] text-white hover:opacity-90 hover:shadow-lg hover:shadow-[#D97706]/30'

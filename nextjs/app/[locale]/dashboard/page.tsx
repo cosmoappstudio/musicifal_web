@@ -85,7 +85,7 @@ export default async function DashboardPage({ params }: Props) {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-2xl font-bold text-white">{mockUser.name}</h1>
-                  {mockUser.plan === 'pro' && (
+                  {mockUser.plan === 'yearly' && (
                     <span className="pro-badge flex items-center gap-1">
                       <Zap className="w-2.5 h-2.5" />PRO
                     </span>

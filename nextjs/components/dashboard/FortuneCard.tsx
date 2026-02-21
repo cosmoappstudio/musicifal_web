@@ -75,7 +75,7 @@ export default function FortuneCard() {
             </Link>
           ) : (
             <UpgradeButton
-              plan="starter"
+              plan="monthly"
               className="inline-flex items-center gap-2 bg-gradient-to-r from-[#D97706] to-[#F59E0B] text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[#D97706]/30"
             >
               <Lock className="w-4 h-4" />

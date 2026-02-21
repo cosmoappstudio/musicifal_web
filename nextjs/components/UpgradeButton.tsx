@@ -3,7 +3,7 @@
 import { useCheckout } from '@/hooks/useCheckout';
 
 interface UpgradeButtonProps {
-  plan: 'starter' | 'pro';
+  plan: 'weekly' | 'monthly' | 'yearly';
   children: React.ReactNode;
   className?: string;
   as?: 'button' | 'a';

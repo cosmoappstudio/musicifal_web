@@ -11,8 +11,9 @@ import type { Plan } from '@/types';
 
 const PLAN_STYLES: Record<Plan, string> = {
   free: 'bg-white/5 text-white/50',
-  starter: 'bg-[#7C3AED]/10 text-[#A855F7]',
-  pro: 'bg-[#D97706]/10 text-[#F59E0B]',
+  weekly: 'bg-[#7C3AED]/10 text-[#A855F7]',
+  monthly: 'bg-[#10B981]/10 text-[#10B981]',
+  yearly: 'bg-[#D97706]/10 text-[#F59E0B]',
 };
 
 const LANG_FLAGS: Record<string, string> = {

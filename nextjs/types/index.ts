@@ -1,6 +1,6 @@
 // ─── User & Auth ───────────────────────────────────────────────────────────────
 
-export type Plan = 'free' | 'starter' | 'pro';
+export type Plan = 'free' | 'weekly' | 'monthly' | 'yearly';
 
 export interface MockUser {
   id: string;
@@ -90,8 +90,9 @@ export interface CountryData {
 
 export interface PlanDistribution {
   free: number;
-  starter: number;
-  pro: number;
+  weekly: number;
+  monthly: number;
+  yearly: number;
 }
 
 export interface MockAdminStats {
@@ -150,8 +151,9 @@ export interface AdminFortune {
 export interface AdminRevenue {
   month: string;
   revenue: number;
-  starter: number;
-  pro: number;
+  weekly: number;
+  monthly: number;
+  yearly: number;
 }
 
 export interface Transaction {
@@ -181,8 +183,9 @@ export interface AppSettings {
     testMode: boolean;
   };
   pricing: {
-    starterMonthlyUSD: number;
-    proMonthlyUSD: number;
+    weeklyUSD: number;
+    monthlyUSD: number;
+    yearlyUSD: number;
     activeCoupon: string;
     couponDiscount: number;
   };

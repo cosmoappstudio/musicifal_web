@@ -24,12 +24,13 @@ export default function AdminOverviewContent() {
 
   const planDistribution = useMemo(() => {
     const free = filteredUsers.filter((u) => u.plan === 'free').length;
-    const starter = filteredUsers.filter((u) => u.plan === 'starter').length;
-    const pro = filteredUsers.filter((u) => u.plan === 'pro').length;
-    return { free, starter, pro };
+    const weekly = filteredUsers.filter((u) => u.plan === 'weekly').length;
+    const monthly = filteredUsers.filter((u) => u.plan === 'monthly').length;
+    const yearly = filteredUsers.filter((u) => u.plan === 'yearly').length;
+    return { free, weekly, monthly, yearly };
   }, [filteredUsers]);
 
-  const activeSubscriptions = filteredUsers.filter((u) => u.plan === 'starter' || u.plan === 'pro').length;
+  const activeSubscriptions = filteredUsers.filter((u) => u.plan === 'weekly' || u.plan === 'monthly' || u.plan === 'yearly').length;
 
   return (
     <>
@@ -110,9 +111,9 @@ export default function AdminOverviewContent() {
               </div>
               <span
                 className={`text-xs px-2 py-0.5 rounded-full font-semibold uppercase ${
-                  user.plan === 'pro'
+                  user.plan === 'yearly'
                     ? 'bg-[#D97706]/10 text-[#F59E0B]'
-                    : user.plan === 'starter'
+                    : user.plan === 'monthly'
                       ? 'bg-[#7C3AED]/10 text-[#A855F7]'
                       : 'bg-white/5 text-white/50'
                 }`}
@@ -132,13 +133,14 @@ export default function AdminOverviewContent() {
 function PlanDistributionChartOverride({
   distribution,
 }: {
-  distribution: { free: number; starter: number; pro: number };
+  distribution: { free: number; weekly: number; monthly: number; yearly: number };
 }) {
   const t = useTranslations('admin');
   const data = [
     { name: 'Free', value: distribution.free, color: '#6B7280' },
-    { name: 'Starter', value: distribution.starter, color: '#7C3AED' },
-    { name: 'PRO', value: distribution.pro, color: '#D97706' },
+    { name: 'Weekly', value: distribution.weekly, color: '#7C3AED' },
+    { name: 'Monthly', value: distribution.monthly, color: '#10B981' },
+    { name: 'Yearly', value: distribution.yearly, color: '#D97706' },
   ];
 
   return (

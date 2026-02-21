@@ -96,8 +96,9 @@ export function PlanDistributionChart() {
   const t = useTranslations('admin');
   const data = [
     { name: 'Free', value: mockAdminStats.planDistribution.free, color: '#6B7280' },
-    { name: 'Starter', value: mockAdminStats.planDistribution.starter, color: '#7C3AED' },
-    { name: 'PRO', value: mockAdminStats.planDistribution.pro, color: '#D97706' },
+    { name: 'Weekly', value: mockAdminStats.planDistribution.weekly, color: '#7C3AED' },
+    { name: 'Monthly', value: mockAdminStats.planDistribution.monthly, color: '#10B981' },
+    { name: 'Yearly', value: mockAdminStats.planDistribution.yearly, color: '#D97706' },
   ];
 
   return (
@@ -166,7 +167,7 @@ export function RevenueLineChart() {
             <YAxis tick={{ fill: '#A598C7', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
             <Tooltip content={<CustomTooltip />} />
             <Area type="monotone" dataKey="revenue" name="Toplam" stroke="#D97706" strokeWidth={2} fill="url(#revenueGrad)" />
-            <Area type="monotone" dataKey="pro" name="PRO" stroke="#7C3AED" strokeWidth={2} fill="url(#proGrad)" />
+            <Area type="monotone" dataKey="yearly" name="Yıllık" stroke="#7C3AED" strokeWidth={1.5} fill="url(#proGrad)" />
           </AreaChart>
         </ResponsiveContainer>
       </div>

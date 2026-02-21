@@ -7,7 +7,7 @@ export function useCheckout() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const checkout = useCallback(async (plan: 'starter' | 'pro') => {
+  const checkout = useCallback(async (plan: 'weekly' | 'monthly' | 'yearly') => {
     setLoading(true);
     setError(null);
     try {
