@@ -5,16 +5,17 @@ import { useLocale } from 'next-intl';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Sparkles, Lock, ArrowRight } from 'lucide-react';
-import { mockFortune, mockUser } from '@/lib/mock-data';
+import { useDashboard } from '@/context/DashboardContext';
 import UpgradeButton from '@/components/UpgradeButton';
 
 export default function FortuneCard() {
   const t = useTranslations('dashboard');
   const locale = useLocale();
-  const isPaid = mockUser.plan !== 'free';
-  const fortuneText = mockFortune[locale as 'tr' | 'en' | 'de' | 'ru'] || mockFortune.tr;
-  const firstParagraph = fortuneText.split('\n\n')[0];
-  const secondParagraph = fortuneText.split('\n\n')[1] || '';
+  const { user, fortune } = useDashboard();
+  const isPaid = user.plan !== 'free';
+  const fortuneText = fortune ? (fortune[locale as 'tr' | 'en' | 'de' | 'ru'] || fortune.tr) : '';
+  const firstParagraph = fortuneText ? fortuneText.split('\n\n')[0] : '';
+  const secondParagraph = fortuneText ? fortuneText.split('\n\n')[1] || '' : '';
 
   return (
     <motion.div
@@ -40,17 +41,24 @@ export default function FortuneCard() {
         </div>
 
         {/* Fortune text */}
-        <div className={`relative ${!isPaid ? 'fortune-blur-overlay' : ''}`}>
-          <p className="fortune-text text-[#F8F7FF]/90 mb-4">
-            {firstParagraph}
-          </p>
-          {isPaid && secondParagraph && (
-            <p className="fortune-text text-[#F8F7FF]/80">
-              {secondParagraph}
+        <div className={`relative ${firstParagraph && !isPaid ? 'fortune-blur-overlay' : ''}`}>
+          {firstParagraph ? (
+            <>
+              <p className="fortune-text text-[#F8F7FF]/90 mb-4">
+                {firstParagraph}
+              </p>
+              {isPaid && secondParagraph && (
+                <p className="fortune-text text-[#F8F7FF]/80">
+                  {secondParagraph}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="fortune-text text-[#A598C7] italic">
+              {t('noFortuneYet')}
             </p>
           )}
-
-          {!isPaid && (
+          {!isPaid && firstParagraph && (
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#1A1535]/60 to-[#1A1535] flex items-end justify-center pb-2">
               <div className="text-center">
                 <div className="flex items-center gap-1.5 justify-center text-[#A598C7] text-sm">
@@ -65,7 +73,15 @@ export default function FortuneCard() {
 
         {/* CTA */}
         <div className="mt-6 pt-6 border-t border-white/[0.06] flex flex-wrap gap-3">
-          {isPaid ? (
+          {!fortune ? (
+            <Link
+              href={`/${locale}/dashboard/fortune`}
+              className="inline-flex items-center gap-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-all"
+            >
+              <Sparkles className="w-4 h-4" />
+              {t('generateFortune')}
+            </Link>
+          ) : isPaid ? (
             <Link
               href={`/${locale}/dashboard/fortune`}
               className="inline-flex items-center gap-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-all hover:shadow-lg hover:shadow-[#7C3AED]/30"

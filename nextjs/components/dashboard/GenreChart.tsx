@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
-import { mockAnalysis } from '@/lib/mock-data';
+import { useDashboard } from '@/context/DashboardContext';
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -35,7 +35,9 @@ function CustomTooltip({ active, payload, t }: CustomTooltipProps) {
 
 export default function GenreChart() {
   const t = useTranslations('dashboard');
-  const { genres } = mockAnalysis;
+  const { analysis } = useDashboard();
+  const genres = analysis?.genres ?? [];
+  if (genres.length === 0) return null;
 
   return (
     <motion.div

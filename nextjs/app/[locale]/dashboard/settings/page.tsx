@@ -1,7 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import Navbar from '@/components/dashboard/Navbar';
 import PlanUpgradeButton from '@/components/dashboard/PlanUpgradeButton';
-import { mockUser } from '@/lib/mock-data';
+import { getCurrentUser } from '@/lib/auth';
 import { Music2, Zap, Globe, AlertTriangle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
@@ -19,6 +19,11 @@ const PLAN_INFO = {
 export default async function SettingsPage({ params }: Props) {
   const { locale } = await params;
   const t = await getTranslations('settings');
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const displayName = user.name || user.email || 'User';
+  const avatarUrl = user.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user.id}&backgroundColor=7C3AED`;
 
   return (
     <div className="min-h-screen">
@@ -36,13 +41,13 @@ export default async function SettingsPage({ params }: Props) {
             <div className="flex items-center gap-4 mb-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={mockUser.avatarUrl}
-                alt={mockUser.name}
+                src={avatarUrl}
+                alt={displayName}
                 className="w-16 h-16 rounded-2xl border border-white/10"
               />
               <div>
-                <p className="font-semibold text-white">{mockUser.name}</p>
-                <p className="text-sm text-[#A598C7]">{mockUser.email}</p>
+                <p className="font-semibold text-white">{displayName}</p>
+                <p className="text-sm text-[#A598C7]">{user.email ?? ''}</p>
               </div>
             </div>
             <div className="space-y-3">
@@ -50,7 +55,7 @@ export default async function SettingsPage({ params }: Props) {
                 <label className="text-xs text-[#A598C7] mb-1.5 block">Ad Soyad</label>
                 <input
                   type="text"
-                  defaultValue={mockUser.name}
+                  defaultValue={displayName}
                   className="w-full bg-white/[0.05] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-[#A598C7] focus:outline-none focus:border-[#7C3AED]/50 transition-colors"
                 />
               </div>
@@ -58,7 +63,7 @@ export default async function SettingsPage({ params }: Props) {
                 <label className="text-xs text-[#A598C7] mb-1.5 block">E-posta</label>
                 <input
                   type="email"
-                  defaultValue={mockUser.email}
+                  defaultValue={user.email ?? ''}
                   className="w-full bg-white/[0.05] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-[#A598C7] focus:outline-none focus:border-[#7C3AED]/50 transition-colors"
                 />
               </div>
@@ -82,16 +87,16 @@ export default async function SettingsPage({ params }: Props) {
                   <div>
                     <p className="text-sm font-medium text-white">Spotify</p>
                     <p className="text-xs text-[#A598C7]">
-                      {mockUser.spotifyConnected ? t('spotifyConnected') : t('spotifyDisconnected')}
+                      {user.spotifyConnected ? t('spotifyConnected') : t('spotifyDisconnected')}
                     </p>
                   </div>
                 </div>
                 <button className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
-                  mockUser.spotifyConnected
+                  user.spotifyConnected
                     ? 'bg-white/[0.05] text-[#A598C7] hover:text-white hover:bg-white/[0.08]'
                     : 'bg-[#1DB954]/10 text-[#1DB954] hover:bg-[#1DB954]/20 border border-[#1DB954]/20'
                 }`}>
-                  {mockUser.spotifyConnected ? t('disconnect') : t('connect')}
+                  {user.spotifyConnected ? t('disconnect') : t('connect')}
                 </button>
               </div>
 
@@ -103,18 +108,18 @@ export default async function SettingsPage({ params }: Props) {
           {/* Plan */}
           <section className="surface-card p-6">
             <h2 className="text-base font-semibold text-white mb-4">{t('planSection')}</h2>
-            <div className={`flex items-center justify-between p-4 rounded-xl border ${PLAN_INFO[mockUser.plan].bg}`}>
+            <div className={`flex items-center justify-between p-4 rounded-xl border ${PLAN_INFO[user.plan].bg}`}>
               <div className="flex items-center gap-3">
-                <Zap className={`w-5 h-5 ${PLAN_INFO[mockUser.plan].color}`} />
+                <Zap className={`w-5 h-5 ${PLAN_INFO[user.plan].color}`} />
                 <div>
-                  <p className={`font-semibold ${PLAN_INFO[mockUser.plan].color}`}>
-                    {PLAN_INFO[mockUser.plan].label}
+                  <p className={`font-semibold ${PLAN_INFO[user.plan].color}`}>
+                    {PLAN_INFO[user.plan].label}
                   </p>
                   <p className="text-xs text-[#A598C7]">{t('currentPlan')}</p>
                 </div>
               </div>
-              {mockUser.plan !== 'yearly' && (
-                <PlanUpgradeButton currentPlan={mockUser.plan} />
+              {user.plan !== 'yearly' && (
+                <PlanUpgradeButton currentPlan={user.plan} />
               )}
             </div>
           </section>

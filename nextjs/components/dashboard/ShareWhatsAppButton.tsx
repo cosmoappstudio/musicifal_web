@@ -3,12 +3,13 @@
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
-import { mockUser } from '@/lib/mock-data';
+import { useDashboard } from '@/context/DashboardContext';
 
 export default function ShareWhatsAppButton() {
   const t = useTranslations('dashboard');
   const tShare = useTranslations('share');
-  const isWatermarked = mockUser.plan === 'free';
+  const { user } = useDashboard();
+  const isWatermarked = user.plan === 'free';
   const shareUrl =
     typeof window !== 'undefined'
       ? `${window.location.origin}/tr/share/demo`

@@ -4,14 +4,15 @@ import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { Zap, X } from 'lucide-react';
 import { useState } from 'react';
-import { mockUser } from '@/lib/mock-data';
+import { useDashboard } from '@/context/DashboardContext';
 import UpgradeButton from '@/components/UpgradeButton';
 
 export default function UpgradeBanner() {
   const tBanner = useTranslations('upgradeBanner');
+  const { user } = useDashboard();
   const [dismissed, setDismissed] = useState(false);
 
-  if (mockUser.plan !== 'free' || dismissed) return null;
+  if (user.plan !== 'free' || dismissed) return null;
 
   return (
     <motion.div

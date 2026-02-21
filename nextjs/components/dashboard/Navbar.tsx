@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { mockUser } from '@/lib/mock-data';
+import { useDashboard } from '@/context/DashboardContext';
 import LocaleSwitcher from '@/components/ui/LocaleSwitcher';
 
 const PLAN_COLORS = {
@@ -26,6 +26,7 @@ const PLAN_COLORS = {
 
 export default function Navbar({ locale }: { locale: string }) {
   const t = useTranslations('nav');
+  const { user } = useDashboard();
   const pathname = usePathname();
 
   const navLinks = [
@@ -84,9 +85,9 @@ export default function Navbar({ locale }: { locale: string }) {
             <LocaleSwitcher />
 
             {/* Plan badge */}
-            <span className={`hidden sm:inline-flex text-xs px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider ${PLAN_COLORS[mockUser.plan]}`}>
-              {mockUser.plan === 'yearly' && <Zap className="w-3 h-3 mr-1" />}
-              {mockUser.plan}
+            <span className={`hidden sm:inline-flex text-xs px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider ${PLAN_COLORS[user.plan]}`}>
+              {user.plan === 'yearly' && <Zap className="w-3 h-3 mr-1" />}
+              {user.plan}
             </span>
 
             {/* Avatar dropdown */}
@@ -94,9 +95,9 @@ export default function Navbar({ locale }: { locale: string }) {
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 p-1 rounded-full hover:bg-white/[0.05] transition-colors">
                   <Avatar className="w-8 h-8">
-                    <AvatarImage src={mockUser.avatarUrl} alt={mockUser.name} />
+                    <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name ?? user.email ?? 'User'} />
                     <AvatarFallback className="bg-[#7C3AED] text-white text-xs">
-                      {mockUser.name.slice(0, 2).toUpperCase()}
+                      {(user.name || user.email || 'U').slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <ChevronDown className="w-3.5 h-3.5 text-[#A598C7] hidden sm:block" />
@@ -107,8 +108,8 @@ export default function Navbar({ locale }: { locale: string }) {
                 className="w-56 bg-[#1A1535] border-white/10"
               >
                 <div className="px-3 py-2">
-                  <p className="font-semibold text-sm">{mockUser.name}</p>
-                  <p className="text-xs text-[#A598C7] truncate">{mockUser.email}</p>
+                  <p className="font-semibold text-sm">{user.name}</p>
+                  <p className="text-xs text-[#A598C7] truncate">{user.email}</p>
                 </div>
                 <DropdownMenuSeparator className="bg-white/10" />
                 {navLinks.map(({ href, label, icon: Icon }) => (

@@ -4,12 +4,13 @@ import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ImageDown, Check, Lock } from 'lucide-react';
-import { mockUser } from '@/lib/mock-data';
+import { useDashboard } from '@/context/DashboardContext';
 
 export default function ShareStoryButton() {
   const t = useTranslations('dashboard');
+  const { user } = useDashboard();
   const [copied, setCopied] = useState(false);
-  const isPaid = mockUser.plan !== 'free';
+  const isPaid = user.plan !== 'free';
 
   const handleShare = async () => {
     // In a real app, this would use html-to-image to export

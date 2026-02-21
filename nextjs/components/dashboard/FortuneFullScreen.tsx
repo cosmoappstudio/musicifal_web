@@ -2,10 +2,11 @@
 
 import { useTranslations } from 'next-intl';
 import { useLocale } from 'next-intl';
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Share2, RefreshCw, Lock } from 'lucide-react';
-import { mockFortune, mockUser } from '@/lib/mock-data';
+import { useDashboard } from '@/context/DashboardContext';
 import UpgradeButton from '@/components/UpgradeButton';
 
 function TypewriterText({ text, delay = 0 }: { text: string; delay?: number }) {
@@ -52,9 +53,10 @@ export default function FortuneFullScreen() {
   const [selectedLang, setSelectedLang] = useState(locale as 'tr' | 'en' | 'de' | 'ru');
   const [isAnimating, setIsAnimating] = useState(true);
 
-  const isPaid = mockUser.plan !== 'free';
-  const fortuneText = mockFortune[selectedLang];
-  const paragraphs = fortuneText.split('\n\n');
+  const { user, fortune } = useDashboard();
+  const isPaid = user.plan !== 'free';
+  const fortuneText = fortune ? (fortune[selectedLang] || fortune.tr) : '';
+  const paragraphs = fortuneText ? fortuneText.split('\n\n') : [];
 
   const langs = isPaid
     ? (['tr', 'en', 'de', 'ru'] as const)
@@ -65,6 +67,26 @@ export default function FortuneFullScreen() {
     setIsAnimating(false);
     setTimeout(() => setIsAnimating(true), 50);
   };
+
+  if (!fortune) {
+    return (
+      <div className="max-w-3xl mx-auto text-center py-16">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#7C3AED]/10 border border-[#7C3AED]/20 text-sm text-[#A855F7] mb-6">
+          <Sparkles className="w-4 h-4" />
+          <span>{t('title')}</span>
+        </div>
+        <p className="text-[#A598C7] mb-8">{dashT('noFortuneYet')}</p>
+        <Link
+          href={`/${locale}/dashboard`}
+          className="inline-flex items-center gap-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold px-6 py-3 rounded-xl"
+        >
+          <Sparkles className="w-4 h-4" />
+          {dashT('generateFortune')}
+        </Link>
+        <p className="text-xs text-[#A598C7] mt-4">{dashT('fetchDataSubtitle')}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -180,7 +202,7 @@ export default function FortuneFullScreen() {
           {/* Generated at */}
           <div className="mt-8 pt-6 border-t border-white/[0.06] flex items-center justify-between flex-wrap gap-3">
             <p className="text-xs text-[#A598C7]" suppressHydrationWarning>
-              {t('generatedAt')}: {new Date(mockFortune.generatedAt).toLocaleDateString(locale === 'tr' ? 'tr-TR' : locale === 'de' ? 'de-DE' : locale === 'ru' ? 'ru-RU' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              {t('generatedAt')}: {fortune?.generatedAt && new Date(fortune.generatedAt).toLocaleDateString(locale === 'tr' ? 'tr-TR' : locale === 'de' ? 'de-DE' : locale === 'ru' ? 'ru-RU' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
             <div className="flex gap-2">
               <button className="flex items-center gap-1.5 text-xs text-[#A598C7] hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/[0.05] transition-colors">

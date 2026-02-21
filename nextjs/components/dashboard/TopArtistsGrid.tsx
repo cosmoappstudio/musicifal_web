@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { mockAnalysis } from '@/lib/mock-data';
+import { useDashboard } from '@/context/DashboardContext';
 
 const RANK_STYLES = [
   { bg: 'bg-gradient-to-br from-[#D97706] to-[#F59E0B]', text: '🥇' },
@@ -13,7 +13,9 @@ const RANK_STYLES = [
 
 export default function TopArtistsGrid() {
   const t = useTranslations('dashboard');
-  const { topArtists } = mockAnalysis;
+  const { analysis } = useDashboard();
+  const topArtists = analysis?.topArtists ?? [];
+  if (topArtists.length === 0) return null;
 
   return (
     <motion.div

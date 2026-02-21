@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { Sun, Sunset, Moon, CloudMoon } from 'lucide-react';
-import { mockAnalysis } from '@/lib/mock-data';
+import { useDashboard } from '@/context/DashboardContext';
 
 const TIME_CONFIG = [
   {
@@ -43,7 +43,13 @@ const TIME_CONFIG = [
 export default function TimeOfDayGrid() {
   const t = useTranslations('dashboard');
   const tCommon = useTranslations('common');
-  const { timeOfDay } = mockAnalysis;
+  const { analysis } = useDashboard();
+  const timeOfDay = analysis?.timeOfDay ?? {
+    morning: { genre: '-', mood: '', moodKey: 'calm', trackCount: 0 },
+    afternoon: { genre: '-', mood: '', moodKey: 'calm', trackCount: 0 },
+    evening: { genre: '-', mood: '', moodKey: 'calm', trackCount: 0 },
+    night: { genre: '-', mood: '', moodKey: 'calm', trackCount: 0 },
+  };
 
   const timeData = {
     morning: { ...timeOfDay.morning, label: t('morning'), time: t('morningTime') },

@@ -48,7 +48,7 @@ export default async function LandingPage({ params }: Props) {
             <div className="flex items-center gap-3">
               <LocaleSwitcher />
               <Link
-                href={`/${locale}/dashboard`}
+                href={`/${locale}/share/demo`}
                 className="hidden sm:inline-flex items-center gap-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold px-4 py-2 rounded-xl text-sm transition-all"
               >
                 Demo

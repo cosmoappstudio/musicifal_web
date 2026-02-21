@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Repeat2 } from 'lucide-react';
-import { mockAnalysis } from '@/lib/mock-data';
+import { useDashboard } from '@/context/DashboardContext';
 
 function AudioPill({ label, value }: { label: string; value: number }) {
   return (
@@ -24,7 +24,9 @@ function AudioPill({ label, value }: { label: string; value: number }) {
 
 export default function TopRepeatedSongs() {
   const t = useTranslations('dashboard');
-  const { topRepeated } = mockAnalysis;
+  const { analysis } = useDashboard();
+  const topRepeated = analysis?.topRepeated ?? [];
+  if (topRepeated.length === 0) return null;
 
   return (
     <motion.div

@@ -1,0 +1,169 @@
+/**
+ * Dashboard data fetching - user, analysis from spotify_raw_data, fortune
+ */
+
+import { createServiceClient } from '@/lib/supabase/client';
+import type { CurrentUser } from '@/lib/auth';
+import type { MockAnalysis, MockFortune } from '@/types';
+
+const COLORS = ['#7C3AED', '#A855F7', '#C084FC', '#E879F9', '#D97706', '#6B7280'];
+const MOOD_KEYS = ['introspective', 'calm', 'aggressive', 'emotional', 'peaceful', 'mixed'] as const;
+
+interface SpotifyRawData {
+  profile?: { id?: string; display_name?: string; email?: string; images?: { url: string }[] } | null;
+  recently_played?: Array<{
+    played_at?: string;
+    track?: { id: string; name: string; artists?: { name: string }[]; album?: { images?: { url: string }[] } };
+  }> | null;
+  top_artists_short?: { items?: Array<{ name: string; images?: { url: string }[]; genres?: string[] }> } | null;
+  top_tracks_short?: { items?: Array<{ id: string; name: string; artists?: { name: string }[]; album?: { images?: { url: string }[] }; popularity?: number }> } | null;
+  fetched_at?: string;
+}
+
+function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null {
+  if (!raw?.top_artists_short?.items?.length) return null;
+
+  const items = raw.top_artists_short.items;
+  const genreCounts: Record<string, number> = {};
+  items.forEach((a) => {
+    (a.genres || []).forEach((g) => {
+      genreCounts[g] = (genreCounts[g] || 0) + 1;
+    });
+  });
+  const totalGenre = Object.values(genreCounts).reduce((a, b) => a + b, 0) || 1;
+  const genres = Object.entries(genreCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([name], i) => ({
+      name,
+      percentage: Math.round((genreCounts[name] / totalGenre) * 100),
+      mood: '',
+      moodKey: MOOD_KEYS[i % MOOD_KEYS.length],
+      color: COLORS[i % COLORS.length],
+    }));
+  if (genres.length < 2) {
+    genres.push({ name: 'Other', percentage: 100 - genres.reduce((s, g) => s + g.percentage, 0), mood: '', moodKey: 'mixed', color: COLORS[5] });
+  }
+
+  const topArtists = items.slice(0, 10).map((a, i) => ({
+    rank: i + 1,
+    name: a.name,
+    playCount: 0,
+    imageUrl: a.images?.[0]?.url ?? '',
+    genre: a.genres?.[0] ?? '',
+  }));
+
+  const played = raw.recently_played || [];
+  const trackCounts: Record<string, { count: number; name: string; artist: string; albumArt: string }> = {};
+  played.forEach((p) => {
+    const t = p.track;
+    if (!t?.id) return;
+    const key = t.id;
+    if (!trackCounts[key]) {
+      trackCounts[key] = { count: 0, name: t.name, artist: t.artists?.[0]?.name ?? '', albumArt: t.album?.images?.[0]?.url ?? '' };
+    }
+    trackCounts[key].count++;
+  });
+  const topRepeated = Object.values(trackCounts)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
+    .map((r, i) => ({
+      rank: i + 1,
+      name: r.name,
+      artist: r.artist,
+      albumArt: r.albumArt,
+      repeatCount: r.count,
+      valence: 0.5,
+      energy: 0.5,
+      danceability: 0.5,
+    }));
+
+  const timeSlots = { morning: 0, afternoon: 0, evening: 0, night: 0 };
+  played.forEach((p) => {
+    const h = new Date(p.played_at || 0).getHours();
+    if (h >= 6 && h < 12) timeSlots.morning++;
+    else if (h >= 12 && h < 18) timeSlots.afternoon++;
+    else if (h >= 18 && h < 24) timeSlots.evening++;
+    else timeSlots.night++;
+  });
+  const dominant = (Object.entries(timeSlots) as [keyof typeof timeSlots, number][]).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'afternoon';
+  const timeOfDay = {
+    morning: { genre: genres[0]?.name ?? 'Unknown', mood: '', moodKey: 'focused', trackCount: timeSlots.morning },
+    afternoon: { genre: genres[0]?.name ?? 'Unknown', mood: '', moodKey: 'thoughtful', trackCount: timeSlots.afternoon },
+    evening: { genre: genres[0]?.name ?? 'Unknown', mood: '', moodKey: 'romantic', trackCount: timeSlots.evening },
+    night: { genre: genres[0]?.name ?? 'Unknown', mood: '', moodKey: 'intense', trackCount: timeSlots.night },
+  };
+
+  return {
+    period: 'last_14_days',
+    genres,
+    topArtists,
+    timeOfDay,
+    topRepeated,
+  };
+}
+
+export interface DashboardData {
+  user: CurrentUser;
+  analysis: MockAnalysis | null;
+  fortune: MockFortune | null;
+  rawFetchedAt: string | null;
+}
+
+export async function getDashboardData(userId: string): Promise<DashboardData> {
+  const supabase = createServiceClient();
+
+  const { data: userRow } = await supabase
+    .from('users')
+    .select('id, name, email, avatar_url, plan')
+    .eq('id', userId)
+    .single();
+
+  const { count: tokenCount } = await supabase
+    .from('spotify_tokens')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  const user: CurrentUser = userRow
+    ? {
+        id: userRow.id,
+        name: userRow.name ?? null,
+        email: userRow.email ?? null,
+        avatarUrl: userRow.avatar_url ?? null,
+        plan: (userRow.plan as CurrentUser['plan']) ?? 'free',
+        spotifyConnected: (tokenCount ?? 0) > 0,
+      }
+    : { id: userId, name: null, email: null, avatarUrl: null, plan: 'free', spotifyConnected: false };
+
+  const { data: rawRows } = await supabase
+    .from('spotify_raw_data')
+    .select('profile, recently_played, top_artists_short, top_tracks_short, fetched_at')
+    .eq('user_id', userId)
+    .order('fetched_at', { ascending: false })
+    .limit(1);
+
+  const raw = rawRows?.[0] as SpotifyRawData | null | undefined;
+  const analysis = transformRawToAnalysis(raw ?? null);
+  const rawFetchedAt = raw?.fetched_at ?? null;
+
+  const { data: fortuneRow } = await supabase
+    .from('fortunes')
+    .select('text, language, generated_at')
+    .eq('user_id', userId)
+    .order('generated_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  const fortune: MockFortune | null = fortuneRow
+    ? {
+        tr: fortuneRow.language === 'tr' ? fortuneRow.text : '',
+        en: fortuneRow.language === 'en' ? fortuneRow.text : '',
+        de: fortuneRow.language === 'de' ? fortuneRow.text : '',
+        ru: fortuneRow.language === 'ru' ? fortuneRow.text : '',
+        generatedAt: fortuneRow.generated_at,
+        isPro: user.plan !== 'free',
+      }
+    : null;
+
+  return { user, analysis, fortune, rawFetchedAt };
+}
