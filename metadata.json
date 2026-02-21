@@ -1,0 +1,5 @@
+{
+  "name": "Musicifal",
+  "description": "A SaaS web application that connects to Spotify/YouTube Music, analyzes listening behavior, and generates a personal 'Music Fortune' and 'Music Wrapped' profile.",
+  "requestFramePermissions": []
+}
