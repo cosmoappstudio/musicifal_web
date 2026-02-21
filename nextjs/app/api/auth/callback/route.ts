@@ -2,15 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCodeForTokens } from '@/lib/spotify/auth';
 import { getSpotifyProfile } from '@/lib/spotify/client';
 import { createServiceClient } from '@/lib/supabase/client';
-import { setSession } from '@/lib/session';
+
+const SESSION_COOKIE = 'musicifal_session';
+const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI;
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 const DEFAULT_LOCALE = 'tr';
 
+function getBaseUrl(request: NextRequest): string {
+  const url = new URL(request.url);
+  return `${url.protocol}//${url.host}`;
+}
+
 export async function GET(request: NextRequest) {
+  const BASE_URL = getBaseUrl(request);
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const state = searchParams.get('state');
@@ -83,15 +90,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${BASE_URL}?error=token_save_failed`);
     }
 
-    await setSession(user.id);
-
     const response = NextResponse.redirect(`${BASE_URL}/${DEFAULT_LOCALE}/dashboard`);
+    response.cookies.set(SESSION_COOKIE, user.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE,
+      path: '/',
+    });
     response.cookies.delete('spotify_auth_state');
     return response;
   } catch (err) {
-    console.error('Spotify callback error:', err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error('Spotify callback error:', errMsg, err);
+    // Redirect with error - user will see ?error=... on homepage
     return NextResponse.redirect(
-      `${BASE_URL}?error=${encodeURIComponent(String(err))}`
+      `${BASE_URL}?error=${encodeURIComponent(errMsg)}`
     );
   }
 }
