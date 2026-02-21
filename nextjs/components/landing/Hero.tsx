@@ -1,8 +1,6 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useLocale } from 'next-intl';
-import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
@@ -26,7 +24,6 @@ function SpotifyIcon() {
 
 export default function Hero() {
   const t = useTranslations('landing');
-  const locale = useLocale();
 
   return (
     <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden px-4 pt-20 pb-16">
@@ -96,16 +93,16 @@ export default function Hero() {
           {t('heroSubtitle')}
         </motion.p>
 
-        {/* CTA button - Spotify OAuth */}
+        {/* CTA button - Spotify OAuth (use <a> for full redirect, not client-side Link) */}
         <motion.div variants={item} className="flex items-center justify-center mb-6">
-          <Link
+          <a
             href="/api/auth/spotify"
             className="group flex items-center gap-3 bg-[#1DB954] hover:bg-[#1aa34a] text-white font-bold px-7 py-4 rounded-2xl text-base transition-all hover:shadow-xl hover:shadow-[#1DB954]/25 hover:-translate-y-0.5"
           >
             <SpotifyIcon />
             {t('ctaSpotify')}
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </Link>
+          </a>
         </motion.div>
 
         {/* Trust text */}
