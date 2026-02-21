@@ -9,7 +9,10 @@ export default function ShareWhatsAppButton() {
   const t = useTranslations('dashboard');
   const tShare = useTranslations('share');
   const isWatermarked = mockUser.plan === 'free';
-  const shareUrl = 'https://musicifal.app/share/demo';
+  const shareUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/tr/share/demo`
+      : (process.env.NEXT_PUBLIC_APP_URL || 'https://musicifal.app') + '/tr/share/demo';
 
   const handleShare = () => {
     const text = isWatermarked
