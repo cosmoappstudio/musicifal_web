@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS public.spotify_raw_data (
   top_tracks_long JSONB,
   audio_features JSONB,
   devices JSONB,
+  genre_analysis JSONB,
   fetched_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

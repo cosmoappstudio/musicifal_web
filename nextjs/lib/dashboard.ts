@@ -9,7 +9,12 @@ import type { MockAnalysis, MockFortune } from '@/types';
 const COLORS = ['#7C3AED', '#A855F7', '#C084FC', '#E879F9', '#D97706', '#6B7280'];
 const MOOD_KEYS = ['introspective', 'calm', 'aggressive', 'emotional', 'peaceful', 'mixed'] as const;
 
-const ARTIST_ITEM = { name: string; images?: { url: string }[]; genres?: string[] };
+interface ARTIST_ITEM { name: string; images?: { url: string }[]; genres?: string[] }
+
+interface GenreAnalysis {
+  genres?: Array<{ name: string; percentage: number }>;
+  songGenres?: Array<{ song: string; artist: string; genre: string }>;
+}
 
 interface SpotifyRawData {
   profile?: { id?: string; display_name?: string; email?: string; images?: { url: string }[] } | null;
@@ -21,7 +26,21 @@ interface SpotifyRawData {
   top_artists_medium?: { items?: ARTIST_ITEM[] } | null;
   top_artists_long?: { items?: ARTIST_ITEM[] } | null;
   top_tracks_short?: { items?: Array<{ id: string; name: string; artists?: { name: string }[]; album?: { images?: { url: string }[] }; popularity?: number }> } | null;
+  genre_analysis?: GenreAnalysis | null;
   fetched_at?: string;
+}
+
+function getGenreForTrack(
+  trackName: string,
+  artistName: string,
+  songGenres: Array<{ song: string; artist: string; genre: string }>
+): string {
+  const t = trackName.toLowerCase().trim();
+  const a = artistName.toLowerCase().trim();
+  const found = songGenres.find(
+    (sg) => sg.song?.toLowerCase().trim() === t && sg.artist?.toLowerCase().trim() === a
+  );
+  return found?.genre ?? '';
 }
 
 function allArtistItems(raw: SpotifyRawData | null): ARTIST_ITEM[] {
@@ -33,7 +52,9 @@ function allArtistItems(raw: SpotifyRawData | null): ARTIST_ITEM[] {
 
 function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null {
   const allArtists = allArtistItems(raw);
-  if (allArtists.length === 0) return null;
+  const played = raw?.recently_played ?? [];
+  const hasGenreAnalysis = (raw?.genre_analysis?.genres?.length ?? 0) > 0;
+  if (allArtists.length === 0 && played.length === 0 && !hasGenreAnalysis) return null;
 
   const items = allArtists; // use all for genre aggregation
   const genreCounts: Record<string, number> = {};
@@ -42,19 +63,47 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
       genreCounts[g] = (genreCounts[g] || 0) + 1;
     });
   });
-  const totalGenre = Object.values(genreCounts).reduce((a, b) => a + b, 0) || 1;
-  const genres = Object.entries(genreCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
-    .map(([name], i) => ({
-      name,
-      percentage: Math.round((genreCounts[name] / totalGenre) * 100),
+
+  let genres: Array<{ name: string; percentage: number; mood: string; moodKey: string; color: string }>;
+
+  if (raw?.genre_analysis?.genres?.length) {
+    genres = raw.genre_analysis.genres.slice(0, 6).map((g, i) => ({
+      name: g.name,
+      percentage: g.percentage,
       mood: '',
       moodKey: MOOD_KEYS[i % MOOD_KEYS.length],
       color: COLORS[i % COLORS.length],
     }));
-  if (genres.length < 2) {
-    genres.push({ name: 'Other', percentage: 100 - genres.reduce((s, g) => s + g.percentage, 0), mood: '', moodKey: 'mixed', color: COLORS[5] });
+    if (genres.length < 2) {
+      genres.push({ name: 'Other', percentage: 100 - genres.reduce((s, g) => s + g.percentage, 0), mood: '', moodKey: 'mixed', color: COLORS[5] });
+    }
+  } else if (Object.keys(genreCounts).length > 0) {
+    const totalGenre = Object.values(genreCounts).reduce((a, b) => a + b, 0) || 1;
+    genres = Object.entries(genreCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([name], i) => ({
+        name,
+        percentage: Math.round((genreCounts[name] / totalGenre) * 100),
+        mood: '',
+        moodKey: MOOD_KEYS[i % MOOD_KEYS.length],
+        color: COLORS[i % COLORS.length],
+      }));
+    if (genres.length < 2) {
+      genres.push({ name: 'Other', percentage: 100 - genres.reduce((s, g) => s + g.percentage, 0), mood: '', moodKey: 'mixed', color: COLORS[5] });
+    }
+  } else {
+    // Spotify often returns empty genres for independent/niche artists - use top artist names as fallback
+    const topForChart = (raw?.top_artists_short?.items ?? allArtists).slice(0, 6);
+    const per = Math.floor(100 / topForChart.length);
+    const remainder = 100 - per * topForChart.length;
+    genres = topForChart.map((a, i) => ({
+      name: a.name,
+      percentage: i === 0 ? per + remainder : per,
+      mood: '',
+      moodKey: MOOD_KEYS[i % MOOD_KEYS.length],
+      color: COLORS[i % COLORS.length],
+    }));
   }
 
   const topArtistsList = (raw?.top_artists_short?.items ?? allArtists).slice(0, 10);
@@ -66,7 +115,6 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     genre: a.genres?.[0] ?? '',
   }));
 
-  const played = raw.recently_played || [];
   const trackCounts: Record<string, { count: number; name: string; artist: string; albumArt: string }> = {};
   played.forEach((p) => {
     const t = p.track;
@@ -92,19 +140,39 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     }));
 
   const timeSlots = { morning: 0, afternoon: 0, evening: 0, night: 0 };
+  const slotGenreCounts: Record<string, Record<string, number>> = {
+    morning: {},
+    afternoon: {},
+    evening: {},
+    night: {},
+  };
+  const songGenres = raw?.genre_analysis?.songGenres ?? [];
+
   played.forEach((p) => {
     const h = new Date(p.played_at || 0).getHours();
-    if (h >= 6 && h < 12) timeSlots.morning++;
-    else if (h >= 12 && h < 18) timeSlots.afternoon++;
-    else if (h >= 18 && h < 24) timeSlots.evening++;
-    else timeSlots.night++;
+    let slot: keyof typeof timeSlots = 'morning';
+    if (h >= 6 && h < 12) slot = 'morning';
+    else if (h >= 12 && h < 18) slot = 'afternoon';
+    else if (h >= 18 && h < 24) slot = 'evening';
+    else slot = 'night';
+    timeSlots[slot]++;
+    const genre = songGenres.length
+      ? getGenreForTrack(p.track?.name ?? '', p.track?.artists?.[0]?.name ?? '', songGenres)
+      : '';
+    if (genre) {
+      slotGenreCounts[slot][genre] = (slotGenreCounts[slot][genre] ?? 0) + 1;
+    }
   });
-  const dominant = (Object.entries(timeSlots) as [keyof typeof timeSlots, number][]).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'afternoon';
+
+  const dominantGenre = (counts: Record<string, number>) => {
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    return entries[0]?.[0] ?? genres[0]?.name ?? 'Unknown';
+  };
   const timeOfDay = {
-    morning: { genre: genres[0]?.name ?? 'Unknown', mood: '', moodKey: 'focused', trackCount: timeSlots.morning },
-    afternoon: { genre: genres[0]?.name ?? 'Unknown', mood: '', moodKey: 'thoughtful', trackCount: timeSlots.afternoon },
-    evening: { genre: genres[0]?.name ?? 'Unknown', mood: '', moodKey: 'romantic', trackCount: timeSlots.evening },
-    night: { genre: genres[0]?.name ?? 'Unknown', mood: '', moodKey: 'intense', trackCount: timeSlots.night },
+    morning: { genre: dominantGenre(slotGenreCounts.morning), mood: '', moodKey: 'focused', trackCount: timeSlots.morning },
+    afternoon: { genre: dominantGenre(slotGenreCounts.afternoon), mood: '', moodKey: 'thoughtful', trackCount: timeSlots.afternoon },
+    evening: { genre: dominantGenre(slotGenreCounts.evening), mood: '', moodKey: 'romantic', trackCount: timeSlots.evening },
+    night: { genre: dominantGenre(slotGenreCounts.night), mood: '', moodKey: 'intense', trackCount: timeSlots.night },
   };
 
   return {
@@ -150,7 +218,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
 
   const { data: rawRows } = await supabase
     .from('spotify_raw_data')
-    .select('profile, recently_played, top_artists_short, top_artists_medium, top_artists_long, top_tracks_short, fetched_at')
+    .select('profile, recently_played, top_artists_short, top_artists_medium, top_artists_long, top_tracks_short, genre_analysis, fetched_at')
     .eq('user_id', userId)
     .order('fetched_at', { ascending: false })
     .limit(1);

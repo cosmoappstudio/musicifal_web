@@ -7,6 +7,7 @@ import { getSession } from '@/lib/session';
 import { createServiceClient } from '@/lib/supabase/client';
 import { refreshAccessToken } from '@/lib/spotify/auth';
 import { fetchAllSpotifyData } from '@/lib/spotify/fetch-all';
+import { analyzeGenres } from '@/lib/replicate/genre-analysis';
 
 export async function POST() {
   const userId = await getSession();
@@ -57,27 +58,54 @@ export async function POST() {
     const data = await fetchAllSpotifyData(accessToken);
     const fetchedAt = new Date().toISOString();
 
-    const { error: insertErr } = await supabase.from('spotify_raw_data').insert({
-      user_id: userId,
-      profile: data.profile as unknown as Record<string, unknown>,
-      recently_played: data.recentlyPlayed as unknown as Record<string, unknown>[],
-      top_artists_short: data.topArtistsShort as unknown as Record<string, unknown>,
-      top_artists_medium: data.topArtistsMedium as unknown as Record<string, unknown>,
-      top_artists_long: data.topArtistsLong as unknown as Record<string, unknown>,
-      top_tracks_short: data.topTracksShort as unknown as Record<string, unknown>,
-      top_tracks_medium: data.topTracksMedium as unknown as Record<string, unknown>,
-      top_tracks_long: data.topTracksLong as unknown as Record<string, unknown>,
-      audio_features: data.audioFeatures as unknown as Record<string, unknown>,
-      devices: data.devices as unknown as Record<string, unknown>,
-      fetched_at: fetchedAt,
-    });
+    const { data: inserted, error: insertErr } = await supabase
+      .from('spotify_raw_data')
+      .insert({
+        user_id: userId,
+        profile: data.profile as unknown as Record<string, unknown>,
+        recently_played: data.recentlyPlayed as unknown as Record<string, unknown>[],
+        top_artists_short: data.topArtistsShort as unknown as Record<string, unknown>,
+        top_artists_medium: data.topArtistsMedium as unknown as Record<string, unknown>,
+        top_artists_long: data.topArtistsLong as unknown as Record<string, unknown>,
+        top_tracks_short: data.topTracksShort as unknown as Record<string, unknown>,
+        top_tracks_medium: data.topTracksMedium as unknown as Record<string, unknown>,
+        top_tracks_long: data.topTracksLong as unknown as Record<string, unknown>,
+        audio_features: data.audioFeatures as unknown as Record<string, unknown>,
+        devices: data.devices as unknown as Record<string, unknown>,
+        fetched_at: fetchedAt,
+      })
+      .select('id')
+      .single();
 
-    if (insertErr) {
+    if (insertErr || !inserted) {
       console.error('spotify_raw_data insert error:', insertErr);
       return NextResponse.json(
         { error: 'Failed to store data' },
         { status: 500 }
       );
+    }
+
+    // Son 14 günde dinlenen 50 şarkı ile Replicate üzerinden genre analizi
+    const { data: appSettings } = await supabase
+      .from('app_settings')
+      .select('replicate_model_id')
+      .eq('id', 'default')
+      .single();
+    const modelId = (appSettings?.replicate_model_id as string) || 'meta/meta-llama-3-8b-instruct';
+
+    const last50 = data.recentlyPlayed.slice(0, 50).map((p: { played_at?: string; track?: { name?: string; artists?: { name?: string }[] } }) => ({
+      name: p.track?.name ?? '',
+      artist: p.track?.artists?.[0]?.name ?? '',
+      playedAt: p.played_at,
+    }));
+    try {
+      const genreAnalysis = await analyzeGenres(last50, modelId);
+      await supabase
+        .from('spotify_raw_data')
+        .update({ genre_analysis: genreAnalysis as unknown as Record<string, unknown> })
+        .eq('id', inserted.id);
+    } catch (e) {
+      console.warn('[Spotify fetch] Genre analysis failed:', e);
     }
 
     return NextResponse.json({

@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Share2, RefreshCw, Lock } from 'lucide-react';
@@ -68,6 +69,29 @@ export default function FortuneFullScreen() {
     setTimeout(() => setIsAnimating(true), 50);
   };
 
+  const router = useRouter();
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const res = await fetch('/api/fortune/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locale }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Fal oluşturulamadı');
+      router.refresh();
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : 'Hata');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   if (!fortune) {
     return (
       <div className="max-w-3xl mx-auto text-center py-16">
@@ -76,13 +100,15 @@ export default function FortuneFullScreen() {
           <span>{t('title')}</span>
         </div>
         <p className="text-[#A598C7] mb-8">{dashT('noFortuneYet')}</p>
-        <Link
-          href={`/${locale}/dashboard`}
-          className="inline-flex items-center gap-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold px-6 py-3 rounded-xl"
+        <button
+          onClick={handleGenerate}
+          disabled={generating}
+          className="inline-flex items-center gap-2 bg-[#7C3AED] hover:bg-[#6D28D9] disabled:opacity-70 text-white font-semibold px-6 py-3 rounded-xl"
         >
           <Sparkles className="w-4 h-4" />
-          {dashT('generateFortune')}
-        </Link>
+          {generating ? 'Oluşturuluyor...' : dashT('generateFortune')}
+        </button>
+        {genError && <p className="text-sm text-red-400 mt-4">{genError}</p>}
         <p className="text-xs text-[#A598C7] mt-4">{dashT('fetchDataSubtitle')}</p>
       </div>
     );

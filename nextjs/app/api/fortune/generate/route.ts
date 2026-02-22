@@ -1,17 +1,17 @@
 /**
  * Generate fortune text using Replicate AI
- * Expects analysis summary as JSON body
+ * If analysisSummary in body: use it. Else: load raw data and build summary.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/client';
 import { generateText } from '@/lib/replicate/client';
 import { getSession } from '@/lib/session';
+import { buildFortuneAnalysisSummary } from '@/lib/fortune/build-summary';
 
 export interface FortuneGenerateBody {
-  /** Analysis summary (genres, top artists, time of day, etc.) */
-  analysisSummary: string;
-  /** Optional override locale for output language hint */
+  /** Optional - if omitted, loads raw data and builds summary */
+  analysisSummary?: string;
   locale?: string;
 }
 
@@ -21,19 +21,35 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body: FortuneGenerateBody;
+  const supabase = createServiceClient();
+
+  let analysisSummary: string;
+  let body: FortuneGenerateBody = {};
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    body = {};
   }
 
-  const { analysisSummary } = body;
-  if (!analysisSummary || typeof analysisSummary !== 'string') {
-    return NextResponse.json({ error: 'analysisSummary required' }, { status: 400 });
+  if (body.analysisSummary && typeof body.analysisSummary === 'string') {
+    analysisSummary = body.analysisSummary;
+  } else {
+    const { data: raw } = await supabase
+      .from('spotify_raw_data')
+      .select('recently_played, genre_analysis, top_artists_short')
+      .eq('user_id', userId)
+      .order('fetched_at', { ascending: false })
+      .limit(1)
+      .single();
+    if (!raw?.recently_played?.length) {
+      return NextResponse.json({ error: 'No Spotify data. Önce Verilerimi Getir yap.' }, { status: 400 });
+    }
+    analysisSummary = buildFortuneAnalysisSummary({
+      recentlyPlayed: raw.recently_played as Array<{ played_at?: string; track?: { id?: string; name?: string; artists?: { name?: string }[] } }>,
+      genreAnalysis: raw.genre_analysis as { genres?: Array<{ name: string; percentage: number }>; songGenres?: Array<{ song: string; artist: string; genre: string }> } | null,
+      topArtistsShort: raw.top_artists_short as { items?: Array<{ name?: string; genres?: string[] }> },
+    });
   }
-
-  const supabase = createServiceClient();
 
   // Load AI settings
   const { data: settings, error: settingsErr } = await supabase
@@ -58,6 +74,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Replicate API not configured' }, { status: 500 });
   }
 
+  const locale = (body.locale ?? 'tr') as 'tr' | 'en' | 'de' | 'ru';
+
   try {
     const text = await generateText({
       modelId: settings.replicate_model_id,
@@ -67,7 +85,15 @@ export async function POST(request: NextRequest) {
       temperature: Number(settings.fortune_temperature ?? 0.85),
     });
 
-    // Optional: save fortune to DB for history (future)
+    const { error: insertErr } = await supabase.from('fortunes').insert({
+      user_id: userId,
+      text,
+      language: locale,
+      featured: false,
+      generated_at: new Date().toISOString(),
+    });
+    if (insertErr) console.error('Fortune save error:', insertErr);
+
     return NextResponse.json({ text });
   } catch (err) {
     console.error('Fortune generate error:', err);
