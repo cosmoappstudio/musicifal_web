@@ -90,6 +90,7 @@ export async function POST() {
       recentlyPlayed: data.recentlyPlayed as Array<{ played_at?: string; track?: { id?: string; name?: string; artists?: { name?: string }[] } }>,
       genreAnalysis: null,
       topArtistsShort: data.topArtistsShort as { items?: Array<{ name?: string; genres?: string[] }> },
+      devices: data.devices as { devices?: Array<{ name?: string; type?: string; is_active?: boolean }> },
     });
     await supabase
       .from('spotify_raw_data')

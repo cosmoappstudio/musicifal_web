@@ -17,7 +17,8 @@ export function getFortuneDataParamsDescription(): string {
   return `- Son ${FORTUNE_LAST_DAYS} günde dinlediği ${FORTUNE_SONGS_COUNT} şarkı (isim, sanatçı, dinleme saati)
 - En az ${FORTUNE_MIN_REPEATS} kez tekrar dinlediği ilk ${FORTUNE_TOP_REPEATED_COUNT} şarkı (isim, sanatçı, tekrar sayısı)
 - En çok dinlediği müzik türleri (yüzdelik dağılım)
-- Günün ritmi: Sabah (06-12), Öğleden sonra (12-18), Akşam (18-23), Gece (23-06) saat dilimlerinde kaç parça dinlemiş ve her dilimdeki dominant tür`;
+- Günün ritmi: Sabah (06-12), Öğleden sonra (12-18), Akşam (18-23), Gece (23-06) saat dilimlerinde kaç parça dinlemiş ve her dilimdeki dominant tür
+- Kayıtlı Spotify cihazları (bilgisayar, telefon, TV gibi; hangi ortamda müzik dinlendiğine dair bağlam)`;
 }
 
 /** Saklanan hesaplanmış parametreler (spotify_raw_data.computed_params) */
@@ -31,6 +32,7 @@ export interface ComputedParams {
     evening: { count: number; dominantGenre: string };
     night: { count: number; dominantGenre: string };
   };
+  devices?: Array<{ name: string; type: string; isActive: boolean }>;
 }
 
 /** Raw veriden hesaplanmış parametreleri üretir (DB'ye kaydedilir) */
@@ -38,8 +40,9 @@ export function computeFortuneParams(params: {
   recentlyPlayed: RawRecentlyPlayed[];
   genreAnalysis?: RawGenreAnalysis | null;
   topArtistsShort?: { items?: Array<{ name?: string; genres?: string[] }> };
+  devices?: { devices?: Array<{ name?: string; type?: string; is_active?: boolean }> };
 }): ComputedParams {
-  const { recentlyPlayed, genreAnalysis, topArtistsShort } = params;
+  const { recentlyPlayed, genreAnalysis, topArtistsShort, devices } = params;
   const played = recentlyPlayed ?? [];
   const lastSongs = played.slice(0, FORTUNE_SONGS_COUNT);
   const songGenres = genreAnalysis?.songGenres ?? [];
@@ -79,6 +82,12 @@ export function computeFortuneParams(params: {
   const dominantGenre = (genres: Record<string, number>) =>
     Object.entries(genres).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '-';
 
+  const deviceList = (devices?.devices ?? []).map((d) => ({
+    name: d.name ?? '',
+    type: d.type ?? '',
+    isActive: d.is_active ?? false,
+  }));
+
   return {
     last50Songs: lastSongs.map((p) => ({
       name: p.track?.name ?? '',
@@ -93,6 +102,7 @@ export function computeFortuneParams(params: {
       evening: { count: slots.evening.count, dominantGenre: dominantGenre(slots.evening.genres) },
       night: { count: slots.night.count, dominantGenre: dominantGenre(slots.night.genres) },
     },
+    devices: deviceList.length > 0 ? deviceList : undefined,
   };
 }
 
@@ -108,6 +118,11 @@ export function paramsToPromptText(params: ComputedParams): string {
   const rhythmLines = (['morning', 'afternoon', 'evening', 'night'] as const).map(
     (s) => `  ${slotLabel(s)}: ${params.rhythmOfDay[s].count} parça, dominant tür: ${params.rhythmOfDay[s].dominantGenre}`
   );
+  const TYPE_TR: Record<string, string> = { Computer: 'Bilgisayar', Smartphone: 'Telefon', TV: 'TV', Speaker: 'Hoparlör', Automobile: 'Araç' };
+  const devicesLine = (params.devices ?? []).length > 0
+    ? (params.devices ?? []).map((d) => `${TYPE_TR[d.type] ?? d.type} (${d.name})${d.isActive ? ' ← aktif' : ''}`).join(', ')
+    : '-';
+
   return `
 KULLANICI MÜZİK ANALİZİ (Son ${FORTUNE_LAST_DAYS} gün)
 
@@ -122,6 +137,9 @@ ${params.topGenres}
 
 ## Günün Ritmi (saat dilimlerine göre dinleme + tür)
 ${rhythmLines.join('\n')}
+
+## Spotify Cihazları
+${devicesLine}
 `.trim();
 }
 

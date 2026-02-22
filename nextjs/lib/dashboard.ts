@@ -4,7 +4,7 @@
 
 import { createServiceClient } from '@/lib/supabase/client';
 import type { CurrentUser } from '@/lib/auth';
-import type { MockAnalysis, MockFortune } from '@/types';
+import type { MockAnalysis, MockFortune, SpotifyDevice } from '@/types';
 import { FORTUNE_MIN_REPEATS } from '@/lib/fortune/build-summary';
 
 const COLORS = ['#7C3AED', '#A855F7', '#C084FC', '#E879F9', '#D97706', '#6B7280'];
@@ -28,6 +28,7 @@ interface SpotifyRawData {
   top_artists_long?: { items?: ARTIST_ITEM[] } | null;
   top_tracks_short?: { items?: Array<{ id?: string; name?: string; artists?: { name: string }[]; album?: { images?: { url: string }[] }; popularity?: number }> } | null;
   genre_analysis?: GenreAnalysis | null;
+  devices?: { devices?: Array<{ id?: string; name?: string; type?: string; is_active?: boolean; volume_percent?: number | null; supports_volume?: boolean }> } | null;
   fetched_at?: string;
 }
 
@@ -250,6 +251,15 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     night: { genre: dominantGenre(slotGenreCounts.night), mood: '', moodKey: 'intense', trackCount: timeSlots.night },
   };
 
+  const devices: SpotifyDevice[] = (raw?.devices?.devices ?? []).map((d) => ({
+    id: d.id ?? '',
+    name: d.name ?? '',
+    type: d.type ?? 'Unknown',
+    isActive: d.is_active ?? false,
+    volumePercent: d.volume_percent ?? null,
+    supportsVolume: d.supports_volume ?? false,
+  }));
+
   return {
     period: 'last_14_days',
     genres,
@@ -257,6 +267,7 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     timeOfDay,
     topRepeated,
     top50Songs,
+    devices,
   };
 }
 
@@ -294,7 +305,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
 
   const { data: rawRows } = await supabase
     .from('spotify_raw_data')
-    .select('profile, recently_played, top_artists_short, top_artists_medium, top_artists_long, top_tracks_short, genre_analysis, fetched_at')
+    .select('profile, recently_played, top_artists_short, top_artists_medium, top_artists_long, top_tracks_short, genre_analysis, devices, fetched_at')
     .eq('user_id', userId)
     .order('fetched_at', { ascending: false })
     .limit(1);

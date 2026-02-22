@@ -64,6 +64,17 @@ export interface TopSong {
   playCount: number;
 }
 
+export type SpotifyDeviceType = 'Computer' | 'Smartphone' | 'Speaker' | 'TV' | 'CastAudio' | 'CastVideo' | 'Automobile' | string;
+
+export interface SpotifyDevice {
+  id: string;
+  name: string;
+  type: SpotifyDeviceType;
+  isActive: boolean;
+  volumePercent: number | null;
+  supportsVolume: boolean;
+}
+
 export interface MockAnalysis {
   period: 'last_14_days';
   genres: GenreData[];
@@ -71,6 +82,7 @@ export interface MockAnalysis {
   timeOfDay: TimeOfDayData;
   topRepeated: TopRepeatedSong[];
   top50Songs: TopSong[];
+  devices: SpotifyDevice[];
 }
 
 // ─── Fortune ───────────────────────────────────────────────────────────────────

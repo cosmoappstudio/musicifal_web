@@ -11,6 +11,7 @@ import FortuneCard from './FortuneCard';
 import UpgradeBanner from './UpgradeBanner';
 import FetchDataPrompt from './FetchDataPrompt';
 import DashboardHero from './DashboardHero';
+import DevicesCard from './DevicesCard';
 import { useDashboard } from '@/context/DashboardContext';
 
 function SectionSkeleton() {
@@ -53,6 +54,9 @@ export default function DashboardContent({ locale }: { locale: string }) {
           </Suspense>
           <Suspense fallback={<SectionSkeleton />}>
             <TopRepeatedSongs />
+          </Suspense>
+          <Suspense fallback={<SectionSkeleton />}>
+            <DevicesCard />
           </Suspense>
           <Suspense fallback={<SectionSkeleton />}>
             <FortuneCard />
