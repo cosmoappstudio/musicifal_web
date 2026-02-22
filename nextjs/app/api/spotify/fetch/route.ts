@@ -91,10 +91,20 @@ export async function POST() {
       },
     });
   } catch (err) {
-    console.error('Spotify fetch error:', err);
+    const msg = err instanceof Error ? err.message : 'Fetch failed';
+    console.error('Spotify fetch error:', msg, err);
+    // 403 = user not in Spotify allowlist or scope issue
+    const is403 = msg.includes('403');
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Fetch failed' },
-      { status: 500 }
+      {
+        error: is403
+          ? 'spotify_403'
+          : msg,
+        detail: is403
+          ? 'Spotify hesabın izin listesinde olmayabilir. Spotify Dashboard → User Management\'dan ekleyip spotify.com/account/apps üzerinden yeniden bağlan.'
+          : undefined,
+      },
+      { status: is403 ? 403 : 500 }
     );
   }
 }

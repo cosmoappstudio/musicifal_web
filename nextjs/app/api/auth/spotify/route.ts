@@ -13,13 +13,14 @@ export function GET(request: NextRequest) {
   }
 
   const state = crypto.randomUUID();
+  const showDialog = request.nextUrl.searchParams.get('reconnect') === '1';
   const searchParams = new URLSearchParams({
     response_type: 'code',
     client_id: CLIENT_ID,
     scope: SPOTIFY_SCOPES,
     redirect_uri: REDIRECT_URI,
     state,
-    show_dialog: 'false',
+    show_dialog: showDialog ? 'true' : 'false',
   });
 
   const response = NextResponse.redirect(

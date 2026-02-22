@@ -16,7 +16,16 @@ export default function FetchDataPrompt() {
         window.location.reload();
       } else {
         const data = await res.json().catch(() => ({}));
-        alert(data.error || 'Failed to fetch data');
+        const msg = data.error === 'spotify_403' && data.detail
+          ? data.detail
+          : data.error || 'Failed to fetch data';
+        alert(msg);
+        // 403 = suggest reconnect
+        if (res.status === 403) {
+          if (window.confirm('Spotify ile yeniden bağlanmak ister misin?')) {
+            window.location.href = '/api/auth/spotify?reconnect=1';
+          }
+        }
       }
     } catch {
       alert('Failed to fetch data');
