@@ -20,7 +20,7 @@ export default function Top50Songs() {
     >
       <div className="mb-6">
         <h2 className="text-xl font-bold text-white">{t('top50Title')}</h2>
-        <p className="text-sm text-[#A598C7] mt-1">{t('top50Subtitle')}</p>
+        <p className="text-sm text-[#A598C7] mt-1">Son ~4 haftanın frekans sıralaması (Spotify Top Charts)</p>
       </div>
 
       <div className="space-y-2 max-h-[420px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
@@ -44,7 +44,7 @@ export default function Top50Songs() {
               <p className="text-sm font-medium text-white truncate">{song.name}</p>
               <p className="text-xs text-[#A598C7] truncate">{song.artist}</p>
             </div>
-            <span className="text-xs font-semibold text-[#A855F7]">{song.playCount} {t('plays')}</span>
+            <span className="text-xs font-semibold text-[#A855F7]/60">#{song.rank}</span>
           </motion.div>
         ))}
       </div>

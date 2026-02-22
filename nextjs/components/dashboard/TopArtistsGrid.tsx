@@ -74,7 +74,7 @@ export default function TopArtistsGrid() {
               {artist.name}
             </p>
             <p className="text-[10px] text-[#A598C7] mt-0.5">
-              {artist.playCount} {t('plays')}
+              {artist.playCount > 0 ? `Son 50'de ${artist.playCount}×` : 'Son 50 dışında'}
             </p>
             <p className="text-[10px] text-[#7C3AED] mt-0.5 truncate w-full px-1">
               {artist.genre}

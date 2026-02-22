@@ -26,7 +26,7 @@ interface SpotifyRawData {
   top_artists_short?: { items?: ARTIST_ITEM[] } | null;
   top_artists_medium?: { items?: ARTIST_ITEM[] } | null;
   top_artists_long?: { items?: ARTIST_ITEM[] } | null;
-  top_tracks_short?: { items?: Array<{ id: string; name: string; artists?: { name: string }[]; album?: { images?: { url: string }[] }; popularity?: number }> } | null;
+  top_tracks_short?: { items?: Array<{ id?: string; name?: string; artists?: { name: string }[]; album?: { images?: { url: string }[] }; popularity?: number }> } | null;
   genre_analysis?: GenreAnalysis | null;
   fetched_at?: string;
 }
@@ -194,16 +194,16 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
       danceability: 0.5,
     }));
 
-  const top50Songs = Object.values(trackCounts)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 50)
-    .map((r, i) => ({
-      rank: i + 1,
-      name: r.name,
-      artist: r.artist,
-      albumArt: r.albumArt,
-      playCount: r.count,
-    }));
+  // top_tracks_short = son ~4 haftanın gerçek sıklık sıralaması
+  // recently_played max 50 kayıt döndürdüğü için trackCounts güvenilmez
+  const topTracksItems = raw?.top_tracks_short?.items ?? [];
+  const top50Songs = topTracksItems.slice(0, 50).map((t, i) => ({
+    rank: i + 1,
+    name: t.name ?? '',
+    artist: t.artists?.[0]?.name ?? '',
+    albumArt: t.album?.images?.[0]?.url ?? '',
+    playCount: 0, // Spotify API play count sağlamıyor; rank = frekans göstergesi
+  }));
 
   const timeSlots = { morning: 0, afternoon: 0, evening: 0, night: 0 };
   const slotGenreCounts: Record<string, Record<string, number>> = {
