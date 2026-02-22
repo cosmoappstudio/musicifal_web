@@ -252,6 +252,16 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     }
   });
 
+  // Overall "baseline" mood — weighted average of top artists' moods (used for empty slots)
+  const defaultMoodKey = (() => {
+    const counts: Record<string, number> = {};
+    topArtistsList.forEach((a, i) => {
+      const mk = artistMoodMap.get(a.name?.toLowerCase().trim() ?? '');
+      if (mk) counts[mk] = (counts[mk] ?? 0) + Math.max(1, 10 - i);
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+  })();
+
   // Build track ID → artist mood (used as slot fallback)
   const trackArtistMoodMap = new Map<string, string>();
   played.forEach((p) => {
@@ -415,38 +425,43 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
   played.forEach((p) => {
     const utcHour = new Date(p.played_at || 0).getUTCHours();
     const h = (utcHour + TZ_OFFSET_HOURS) % 24;
-    const slot: keyof typeof timeSlots = h >= 6 && h < 12 ? 'morning' : h >= 12 && h < 18 ? 'afternoon' : h >= 18 ? 'evening' : 'night';
+    const slot: keyof typeof timeSlots = h >= 6 && h < 12 ? 'morning' : h >= 12 && h < 18 ? 'afternoon' : h >= 18 && h < 23 ? 'evening' : 'night';
     timeSlots[slot]++;
     if (p.track?.id) slotTrackIds[slot].push(p.track.id);
     const g = songGenres.length ? getGenreForTrack(p.track?.name ?? '', p.track?.artists?.[0]?.name ?? '', songGenres) : '';
     if (g && isValidGenre(g)) slotGenres[slot][g] = (slotGenres[slot][g] ?? 0) + 1;
   });
 
-  // Dominant mood per slot — 3-tier fallback: audio features → Gemini genre → artist genre
+  // Dominant mood per slot — 4-tier fallback: audio features → Gemini genre → artist genre → overall baseline
   const slotMoodKey = (ids: string[], genreCounts: Record<string, number>, fallbackIdx: number): string => {
-    // Tier 1: audio features
+    // Tier 1: audio features (energy+valence per track)
     const afCounts: Record<string, number> = {};
     ids.forEach((id) => {
       const af = featuresMap.get(id);
       if (!af || typeof af.energy !== 'number' || typeof af.valence !== 'number') return;
-      afCounts[trackMoodKey(af.energy, af.valence)] = (afCounts[trackMoodKey(af.energy, af.valence)] ?? 0) + 1;
+      const mk = trackMoodKey(af.energy, af.valence);
+      afCounts[mk] = (afCounts[mk] ?? 0) + 1;
     });
     const afTop = Object.entries(afCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
     if (afTop) return afTop;
 
-    // Tier 2: dominant genre from Gemini analysis → moodKey
+    // Tier 2: dominant genre in this slot → moodKey (Gemini analysis)
     const topGenre = Object.entries(genreCounts)
       .filter(([n]) => isValidGenre(n))
       .sort((a, b) => b[1] - a[1])[0]?.[0];
     if (topGenre) return genreMoodKey(topGenre, topTracksItems, songGenres, featuresMap, fallbackIdx);
 
-    // Tier 3: artist genre keyword mapping (always available)
+    // Tier 3: artist genre keyword mapping for tracks in this slot
     const agCounts: Record<string, number> = {};
     ids.forEach((id) => {
       const mk = trackArtistMoodMap.get(id);
       if (mk) agCounts[mk] = (agCounts[mk] ?? 0) + 1;
     });
-    return Object.entries(agCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+    const agTop = Object.entries(agCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (agTop) return agTop;
+
+    // Tier 4: overall baseline mood (slot has 0 plays — show user's general character)
+    return defaultMoodKey;
   };
 
   const slotMoods = {
