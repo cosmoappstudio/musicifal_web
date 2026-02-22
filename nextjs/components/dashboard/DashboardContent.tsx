@@ -6,6 +6,7 @@ import GenreChart from './GenreChart';
 import TimeOfDayGrid from './TimeOfDayGrid';
 import TopArtistsGrid from './TopArtistsGrid';
 import TopRepeatedSongs from './TopRepeatedSongs';
+import Top50Songs from './Top50Songs';
 import FortuneCard from './FortuneCard';
 import UpgradeBanner from './UpgradeBanner';
 import FetchDataPrompt from './FetchDataPrompt';
@@ -46,6 +47,9 @@ export default function DashboardContent({ locale }: { locale: string }) {
           </Suspense>
           <Suspense fallback={<SectionSkeleton />}>
             <TopArtistsGrid />
+          </Suspense>
+          <Suspense fallback={<SectionSkeleton />}>
+            <Top50Songs />
           </Suspense>
           <Suspense fallback={<SectionSkeleton />}>
             <TopRepeatedSongs />

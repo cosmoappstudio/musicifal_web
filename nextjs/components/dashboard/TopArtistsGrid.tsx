@@ -41,15 +41,21 @@ export default function TopArtistsGrid() {
           >
             <div className="relative mb-3">
               {/* Avatar */}
-              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white/[0.06] group-hover:border-[#7C3AED]/50 transition-colors duration-300">
-                <Image
-                  src={artist.imageUrl}
-                  alt={artist.name}
-                  width={64}
-                  height={64}
-                  className="w-full h-full object-cover"
-                  unoptimized
-                />
+              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white/[0.06] group-hover:border-[#7C3AED]/50 transition-colors duration-300 bg-white/[0.05]">
+                {artist.imageUrl ? (
+                  <Image
+                    src={artist.imageUrl}
+                    alt={artist.name}
+                    width={64}
+                    height={64}
+                    className="w-full h-full object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[#7C3AED] font-bold text-lg">
+                    {artist.name?.charAt(0) ?? '?'}
+                  </div>
+                )}
               </div>
 
               {/* Rank badge */}

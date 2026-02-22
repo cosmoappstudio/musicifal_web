@@ -8,6 +8,7 @@ import { createServiceClient } from '@/lib/supabase/client';
 import { refreshAccessToken } from '@/lib/spotify/auth';
 import { fetchAllSpotifyData } from '@/lib/spotify/fetch-all';
 import { analyzeGenres } from '@/lib/replicate/genre-analysis';
+import { computeFortuneParams } from '@/lib/fortune/build-summary';
 
 export async function POST() {
   const userId = await getSession();
@@ -98,14 +99,33 @@ export async function POST() {
       artist: p.track?.artists?.[0]?.name ?? '',
       playedAt: p.played_at,
     }));
+    let genreAnalysis: Record<string, unknown> | null = null;
     try {
-      const genreAnalysis = await analyzeGenres(last50, modelId);
+      genreAnalysis = await analyzeGenres(last50, modelId) as Record<string, unknown>;
+      const computedParams = computeFortuneParams({
+        recentlyPlayed: data.recentlyPlayed as Array<{ played_at?: string; track?: { id?: string; name?: string; artists?: { name?: string }[] } }>,
+        genreAnalysis: genreAnalysis as { genres?: Array<{ name: string; percentage: number }>; songGenres?: Array<{ song: string; artist: string; genre: string }> },
+        topArtistsShort: data.topArtistsShort as { items?: Array<{ name?: string; genres?: string[] }> },
+      });
       await supabase
         .from('spotify_raw_data')
-        .update({ genre_analysis: genreAnalysis as unknown as Record<string, unknown> })
+        .update({
+          genre_analysis: genreAnalysis,
+          computed_params: computedParams as unknown as Record<string, unknown>,
+        })
         .eq('id', inserted.id);
     } catch (e) {
       console.warn('[Spotify fetch] Genre analysis failed:', e);
+      // genre_analysis olmadan da computed_params hesapla (tür fallback ile)
+      const computedParams = computeFortuneParams({
+        recentlyPlayed: data.recentlyPlayed as Array<{ played_at?: string; track?: { id?: string; name?: string; artists?: { name?: string }[] } }>,
+        genreAnalysis: null,
+        topArtistsShort: data.topArtistsShort as { items?: Array<{ name?: string; genres?: string[] }> },
+      });
+      await supabase
+        .from('spotify_raw_data')
+        .update({ computed_params: computedParams as unknown as Record<string, unknown> })
+        .eq('id', inserted.id);
     }
 
     return NextResponse.json({

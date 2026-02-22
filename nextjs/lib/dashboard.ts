@@ -5,6 +5,7 @@
 import { createServiceClient } from '@/lib/supabase/client';
 import type { CurrentUser } from '@/lib/auth';
 import type { MockAnalysis, MockFortune } from '@/types';
+import { FORTUNE_MIN_REPEATS } from '@/lib/fortune/build-summary';
 
 const COLORS = ['#7C3AED', '#A855F7', '#C084FC', '#E879F9', '#D97706', '#6B7280'];
 const MOOD_KEYS = ['introspective', 'calm', 'aggressive', 'emotional', 'peaceful', 'mixed'] as const;
@@ -53,7 +54,7 @@ function allArtistItems(raw: SpotifyRawData | null): ARTIST_ITEM[] {
 function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null {
   const allArtists = allArtistItems(raw);
   const played = raw?.recently_played ?? [];
-  const hasGenreAnalysis = (raw?.genre_analysis?.genres?.length ?? 0) > 0;
+  const hasGenreAnalysis = (raw?.genre_analysis?.genres?.length ?? 0) > 0 || (raw?.genre_analysis?.songGenres?.length ?? 0) > 0;
   if (allArtists.length === 0 && played.length === 0 && !hasGenreAnalysis) return null;
 
   const items = allArtists; // use all for genre aggregation
@@ -64,17 +65,51 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     });
   });
 
+  const topArtistsList = (raw?.top_artists_short?.items ?? allArtists).slice(0, 10);
+  const artistNames = new Set(topArtistsList.map((a) => a.name?.toLowerCase().trim()).filter(Boolean));
+
+  const isValidGenre = (name: string) => {
+    const n = name?.trim().toLowerCase();
+    if (!n) return false;
+    if (artistNames.has(n)) return false; // sanatçı adı değil
+    return true;
+  };
+
   let genres: Array<{ name: string; percentage: number; mood: string; moodKey: string; color: string }>;
 
-  if (raw?.genre_analysis?.genres?.length) {
-    genres = raw.genre_analysis.genres.slice(0, 6).map((g, i) => ({
+  if (raw?.genre_analysis?.songGenres?.length) {
+    const sg = raw.genre_analysis.songGenres;
+    const genreCountsFromSongs: Record<string, number> = {};
+    sg.forEach((s) => {
+      const g = s.genre?.trim();
+      if (g && isValidGenre(g)) {
+        genreCountsFromSongs[g] = (genreCountsFromSongs[g] ?? 0) + 1;
+      }
+    });
+    const total = Object.values(genreCountsFromSongs).reduce((a, b) => a + b, 0) || 1;
+    genres = Object.entries(genreCountsFromSongs)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([name], i) => ({
+        name,
+        percentage: Math.round((genreCountsFromSongs[name] / total) * 100),
+        mood: '',
+        moodKey: MOOD_KEYS[i % MOOD_KEYS.length],
+        color: COLORS[i % COLORS.length],
+      }));
+    if (genres.length < 2 && Object.keys(genreCountsFromSongs).length > 0) {
+      genres.push({ name: 'Other', percentage: 100 - genres.reduce((s, g) => s + g.percentage, 0), mood: '', moodKey: 'mixed', color: COLORS[5] });
+    }
+  } else if (raw?.genre_analysis?.genres?.length) {
+    const filtered = raw.genre_analysis.genres.filter((g) => isValidGenre(g.name));
+    genres = filtered.slice(0, 6).map((g, i) => ({
       name: g.name,
       percentage: g.percentage,
       mood: '',
       moodKey: MOOD_KEYS[i % MOOD_KEYS.length],
       color: COLORS[i % COLORS.length],
     }));
-    if (genres.length < 2) {
+    if (genres.length < 2 && filtered.length > 0) {
       genres.push({ name: 'Other', percentage: 100 - genres.reduce((s, g) => s + g.percentage, 0), mood: '', moodKey: 'mixed', color: COLORS[5] });
     }
   } else if (Object.keys(genreCounts).length > 0) {
@@ -106,13 +141,20 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     }));
   }
 
-  const topArtistsList = (raw?.top_artists_short?.items ?? allArtists).slice(0, 10);
+  const artistPlayCounts: Record<string, number> = {};
+  played.forEach((p) => {
+    const artistName = p.track?.artists?.[0]?.name?.trim();
+    if (artistName) {
+      artistPlayCounts[artistName] = (artistPlayCounts[artistName] ?? 0) + 1;
+    }
+  });
+
   const topArtists = topArtistsList.map((a, i) => ({
     rank: i + 1,
     name: a.name,
-    playCount: 0,
+    playCount: artistPlayCounts[a.name] ?? 0,
     imageUrl: a.images?.[0]?.url ?? '',
-    genre: a.genres?.[0] ?? '',
+    genre: a.genres?.[0] ?? raw?.genre_analysis?.songGenres?.find((sg) => sg.artist?.toLowerCase() === a.name?.toLowerCase())?.genre ?? '',
   }));
 
   const trackCounts: Record<string, { count: number; name: string; artist: string; albumArt: string }> = {};
@@ -126,6 +168,7 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     trackCounts[key].count++;
   });
   const topRepeated = Object.values(trackCounts)
+    .filter((r) => r.count >= FORTUNE_MIN_REPEATS)
     .sort((a, b) => b.count - a.count)
     .slice(0, 3)
     .map((r, i) => ({
@@ -137,6 +180,17 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
       valence: 0.5,
       energy: 0.5,
       danceability: 0.5,
+    }));
+
+  const top50Songs = Object.values(trackCounts)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 50)
+    .map((r, i) => ({
+      rank: i + 1,
+      name: r.name,
+      artist: r.artist,
+      albumArt: r.albumArt,
+      playCount: r.count,
     }));
 
   const timeSlots = { morning: 0, afternoon: 0, evening: 0, night: 0 };
@@ -165,8 +219,10 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
   });
 
   const dominantGenre = (counts: Record<string, number>) => {
-    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    return entries[0]?.[0] ?? genres[0]?.name ?? 'Unknown';
+    const entries = Object.entries(counts)
+      .filter(([name]) => isValidGenre(name))
+      .sort((a, b) => b[1] - a[1]);
+    return entries[0]?.[0] ?? genres[0]?.name ?? '—';
   };
   const timeOfDay = {
     morning: { genre: dominantGenre(slotGenreCounts.morning), mood: '', moodKey: 'focused', trackCount: timeSlots.morning },
@@ -181,6 +237,7 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     topArtists,
     timeOfDay,
     topRepeated,
+    top50Songs,
   };
 }
 

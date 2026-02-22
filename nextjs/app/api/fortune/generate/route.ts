@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/client';
 import { generateText } from '@/lib/replicate/client';
 import { getSession } from '@/lib/session';
-import { buildFortuneAnalysisSummary } from '@/lib/fortune/build-summary';
+import { buildFortuneAnalysisSummary, getFortuneDataParamsDescription, paramsToPromptText, type ComputedParams } from '@/lib/fortune/build-summary';
 
 export interface FortuneGenerateBody {
   /** Optional - if omitted, loads raw data and builds summary */
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   } else {
     const { data: raw } = await supabase
       .from('spotify_raw_data')
-      .select('recently_played, genre_analysis, top_artists_short')
+      .select('recently_played, genre_analysis, top_artists_short, computed_params')
       .eq('user_id', userId)
       .order('fetched_at', { ascending: false })
       .limit(1)
@@ -44,11 +44,16 @@ export async function POST(request: NextRequest) {
     if (!raw?.recently_played?.length) {
       return NextResponse.json({ error: 'No Spotify data. Önce Verilerimi Getir yap.' }, { status: 400 });
     }
-    analysisSummary = buildFortuneAnalysisSummary({
-      recentlyPlayed: raw.recently_played as Array<{ played_at?: string; track?: { id?: string; name?: string; artists?: { name?: string }[] } }>,
-      genreAnalysis: raw.genre_analysis as { genres?: Array<{ name: string; percentage: number }>; songGenres?: Array<{ song: string; artist: string; genre: string }> } | null,
-      topArtistsShort: raw.top_artists_short as { items?: Array<{ name?: string; genres?: string[] }> },
-    });
+    const params = raw.computed_params as ComputedParams | null;
+    if (params?.last50Songs?.length || params?.top10Repeated?.length || params?.topGenres || params?.rhythmOfDay) {
+      analysisSummary = paramsToPromptText(params);
+    } else {
+      analysisSummary = buildFortuneAnalysisSummary({
+        recentlyPlayed: raw.recently_played as Array<{ played_at?: string; track?: { id?: string; name?: string; artists?: { name?: string }[] } }>,
+        genreAnalysis: raw.genre_analysis as { genres?: Array<{ name: string; percentage: number }>; songGenres?: Array<{ song: string; artist: string; genre: string }> } | null,
+        topArtistsShort: raw.top_artists_short as { items?: Array<{ name?: string; genres?: string[] }> },
+      });
+    }
   }
 
   // Load AI settings
@@ -76,10 +81,15 @@ export async function POST(request: NextRequest) {
 
   const locale = (body.locale ?? 'tr') as 'tr' | 'en' | 'de' | 'ru';
 
+  const systemPrompt = (settings.fortune_prompt_template as string).replace(
+    '{{DATA_PARAMS}}',
+    getFortuneDataParamsDescription()
+  );
+
   try {
     const text = await generateText({
       modelId: settings.replicate_model_id,
-      systemPrompt: settings.fortune_prompt_template,
+      systemPrompt,
       userPrompt: analysisSummary,
       maxTokens: settings.fortune_max_tokens ?? 1024,
       temperature: Number(settings.fortune_temperature ?? 0.85),

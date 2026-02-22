@@ -10,12 +10,12 @@ export interface GenreAnalysisResult {
   songGenres: Array<{ song: string; artist: string; genre: string }>;
 }
 
-const GENRE_ANALYSIS_SYSTEM = `Sen bir müzik uzmanısın. Verilen şarkı listesindeki her parçayı analiz edip müzik türü (genre) tahmini yapıyorsun.
-KURALLAR:
-- Sadece geçerli JSON döndür, başka metin yazma.
-- "genres" array: Genel tür dağılımı. Örn: [{"name":"Pop","percentage":35},{"name":"Rock","percentage":25}]. Toplam %100 olmalı.
-- "songGenres" array: Her şarkı için. Örn: [{"song":"Şarkı Adı","artist":"Sanatçı","genre":"Pop"}].
-- Tür isimleri: Pop, Rock, Hip Hop, R&B, Electronic, Jazz, Folk, Classical, Metal, Indie, Alternative, Punk, Country, Soul, Reggae, Lo-fi, Phonk, House, Techno vb. (Türkçe veya İngilizce olabilir)`;
+const GENRE_ANALYSIS_SYSTEM = `Sen bir müzik uzmanısın. Verilen şarkı listesindeki her parçayı analiz edip SADECE müzik türü (genre) tahmini yapıyorsun.
+ÖNEMLİ KURALLAR:
+- "genres" ve "songGenres" içindeki "name" / "genre" alanları SADECE müzik türü olmalı (Pop, Rock, Hip Hop, Trap, R&B, K-Pop, C-Pop, Türkçe Pop, Akustik, Duygusal, Indie, Lo-fi vb.)
+- ASLA sanatçı adı yazma. "Wegh", "Malfine" gibi sanatçı isimleri KESINLIKLE yasak.
+- Şarkı türünü bilmiyorsan "Other" veya genel kategori kullan (örn. Pop, Rock).
+- Sadece geçerli JSON döndür, başka metin yazma.`;
 
 function parseGenreAnalysis(text: string): GenreAnalysisResult {
   try {
@@ -47,8 +47,8 @@ export async function analyzeGenres(
 
 ${list}
 
-Yanıt sadece şu formatta JSON olsun:
-{"genres":[{"name":"Tür1","percentage":X},{"name":"Tür2","percentage":Y}],"songGenres":[{"song":"Şarkı Adı","artist":"Sanatçı","genre":"Tür"}]}`;
+Yanıt sadece şu formatta JSON olsun. genre/name SADECE müzik türü (Pop, Rock, Trap vb.), SANATÇI ADI DEĞİL:
+{"genres":[{"name":"Pop","percentage":35},{"name":"Hip Hop","percentage":25}],"songGenres":[{"song":"Şarkı","artist":"Sanatçı","genre":"Pop"}]}`;
 
   const token = process.env.REPLICATE_API_TOKEN;
   if (!token) {

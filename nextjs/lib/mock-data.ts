@@ -87,6 +87,11 @@ export const mockAnalysis: MockAnalysis = {
       danceability: 0.72,
     },
   ],
+  top50Songs: [
+    { rank: 1, name: 'Do I Wanna Know?', artist: 'Arctic Monkeys', albumArt: 'https://i.scdn.co/image/ab67616d0000b273dc31d8ba01fc7a2a7bae9f78', playCount: 42 },
+    { rank: 2, name: 'The Less I Know The Better', artist: 'Tame Impala', albumArt: 'https://i.scdn.co/image/ab67616d0000b2739e1cfc756886ac782e363d2e', playCount: 31 },
+    { rank: 3, name: 'Heat Waves', artist: 'Glass Animals', albumArt: 'https://i.scdn.co/image/ab67616d0000b2739e495fb707973f3390850eea', playCount: 24 },
+  ],
 };
 
 // ─── Fortune ──────────────────────────────────────────────────────────────────

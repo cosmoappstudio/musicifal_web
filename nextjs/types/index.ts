@@ -56,12 +56,21 @@ export interface TopRepeatedSong {
   danceability: number;
 }
 
+export interface TopSong {
+  rank: number;
+  name: string;
+  artist: string;
+  albumArt: string;
+  playCount: number;
+}
+
 export interface MockAnalysis {
   period: 'last_14_days';
   genres: GenreData[];
   topArtists: TopArtist[];
   timeOfDay: TimeOfDayData;
   topRepeated: TopRepeatedSong[];
+  top50Songs: TopSong[];
 }
 
 // ─── Fortune ───────────────────────────────────────────────────────────────────
