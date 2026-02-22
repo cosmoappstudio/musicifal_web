@@ -101,7 +101,7 @@ export async function POST() {
     }));
     let genreAnalysis: Record<string, unknown> | null = null;
     try {
-      genreAnalysis = await analyzeGenres(last50, modelId) as Record<string, unknown>;
+      genreAnalysis = await analyzeGenres(last50, modelId) as unknown as Record<string, unknown>;
       const computedParams = computeFortuneParams({
         recentlyPlayed: data.recentlyPlayed as Array<{ played_at?: string; track?: { id?: string; name?: string; artists?: { name?: string }[] } }>,
         genreAnalysis: genreAnalysis as { genres?: Array<{ name: string; percentage: number }>; songGenres?: Array<{ song: string; artist: string; genre: string }> },
