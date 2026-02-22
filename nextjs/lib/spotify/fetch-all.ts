@@ -58,7 +58,16 @@ export async function fetchAllSpotifyData(
   [topTracksShort, topTracksMedium, topTracksLong].forEach((res) =>
     res.items.forEach((t) => trackIds.add(t.id))
   );
-  const audioFeatures = await getAudioFeatures(accessToken, [...trackIds]);
+
+  // audio-features can 403 in some Spotify setups (e.g. certain regions/accounts)
+  // make it non-fatal so user still gets profile, top artists, top tracks, etc.
+  let audioFeatures: Awaited<ReturnType<typeof getAudioFeatures>>;
+  try {
+    audioFeatures = await getAudioFeatures(accessToken, [...trackIds]);
+  } catch (e) {
+    console.warn('[Spotify] audio-features failed, continuing without:', e instanceof Error ? e.message : e);
+    audioFeatures = { audio_features: [] };
+  }
 
   return {
     profile,
