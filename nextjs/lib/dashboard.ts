@@ -13,6 +13,16 @@ import { FORTUNE_MIN_REPEATS } from '@/lib/fortune/build-summary';
 const COLORS = ['#7C3AED', '#A855F7', '#C084FC', '#E879F9', '#D97706', '#6B7280'];
 const MOOD_KEYS = ['introspective', 'calm', 'aggressive', 'emotional', 'peaceful', 'mixed'] as const;
 
+const MOOD_LABELS_TR: Record<string, string> = {
+  introspective: 'İçedönük',
+  calm: 'Sakin',
+  aggressive: 'Agresif',
+  emotional: 'Duygusal',
+  peaceful: 'Dingin',
+  energetic: 'Enerjik',
+  mixed: 'Karışık',
+};
+
 // ─── Local types for raw DB row ────────────────────────────────────────────────
 
 interface ArtistItem { name: string; images?: { url: string }[]; genres?: string[] }
@@ -78,6 +88,56 @@ function genreMoodKey(
   if (avgE < 0.45 && avgV >= 0.5) return 'peaceful';
   if (avgE < 0.6) return 'calm';
   return 'mixed';
+}
+
+/**
+ * Classifies a single track into a mood bucket using energy + valence.
+ * This is OUR interpretation, independent of Spotify genre tags.
+ */
+function trackMoodKey(energy: number, valence: number): string {
+  if (energy >= 0.72 && valence < 0.38) return 'aggressive';
+  if (energy >= 0.68 && valence >= 0.52) return 'energetic';
+  if (energy >= 0.55 && valence >= 0.62) return 'emotional';
+  if (energy < 0.38 && valence < 0.38) return 'introspective';
+  if (energy < 0.42 && valence >= 0.52) return 'peaceful';
+  if (energy < 0.58) return 'calm';
+  return 'mixed';
+}
+
+/**
+ * Derives a mood distribution directly from audio features — no genre names needed.
+ * Uses rank-weighted scoring: rank #1 track contributes 50 points, rank #50 contributes 1.
+ * Returns null if fewer than 8 tracks have audio features (not enough signal).
+ */
+function computeMoodDistribution(
+  topTracksItems: Array<{ id?: string }>,
+  featuresMap: Map<string, RawAudioFeature>,
+): Array<{ name: string; percentage: number; moodKey: string; color: string; mood: string }> | null {
+  const moodWeights: Record<string, number> = {};
+  let totalWeight = 0;
+  let tracksWithFeatures = 0;
+
+  topTracksItems.slice(0, 50).forEach((t, i) => {
+    if (!t.id) return;
+    const af = featuresMap.get(t.id);
+    if (!af || typeof af.energy !== 'number' || typeof af.valence !== 'number') return;
+    tracksWithFeatures++;
+    const mood = trackMoodKey(af.energy, af.valence);
+    const weight = Math.max(1, 50 - i);
+    moodWeights[mood] = (moodWeights[mood] ?? 0) + weight;
+    totalWeight += weight;
+  });
+
+  if (tracksWithFeatures < 8 || totalWeight === 0) return null;
+
+  const entries = Object.entries(moodWeights).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  return entries.map(([moodKey, weight], i) => ({
+    name: MOOD_LABELS_TR[moodKey] ?? moodKey,
+    percentage: Math.round((weight / totalWeight) * 100),
+    moodKey,
+    color: COLORS[i % COLORS.length],
+    mood: '',
+  }));
 }
 
 function getGenreForTrack(
@@ -152,11 +212,17 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
   const topTrackIds = topTracksItems.map((t) => t.id).filter(Boolean) as string[];
   const audioProfile = computeAudioProfile(topTrackIds, featuresMap);
 
-  // ── Genres ────────────────────────────────────────────────────────────────
+  // ── Genres (shown as mood profile, not Spotify genre tags) ─────────────
   let genres: Array<{ name: string; percentage: number; mood: string; moodKey: string; color: string }> = [];
 
-  if (songGenres.length) {
-    // Primary: rank-weighted from top_tracks_short (rank #1 = weight 50)
+  // Primary: audio features → our own mood interpretation (no genre names)
+  const moodDist = computeMoodDistribution(topTracksItems, featuresMap);
+  if (moodDist && moodDist.length >= 2) {
+    genres = moodDist;
+  }
+
+  // Fallback: use Gemini genre analysis with mood labels replacing genre names
+  if (genres.length === 0 && songGenres.length) {
     const genreWeights: Record<string, number> = {};
     topTracksItems.slice(0, 50).forEach((t, i) => {
       const g = getGenreForTrack(t.name ?? '', t.artists?.[0]?.name ?? '', songGenres).trim();
@@ -164,7 +230,6 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
         genreWeights[g] = (genreWeights[g] ?? 0) + Math.max(1, 50 - i);
       }
     });
-    // Supplement with recently_played (lower weight = 1 per play)
     played.forEach((p) => {
       const g = getGenreForTrack(p.track?.name ?? '', p.track?.artists?.[0]?.name ?? '', songGenres).trim();
       if (g && isValidGenre(g)) {
@@ -174,50 +239,24 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     const entries = Object.entries(genreWeights).sort((a, b) => b[1] - a[1]).slice(0, 6);
     if (entries.length > 0) {
       const total = entries.reduce((s, [, w]) => s + w, 0) || 1;
-      genres = entries.map(([name, weight], i) => ({
-        name,
+      // Aggregate entries by moodKey so we show moods, not genre names
+      const moodAgg: Record<string, number> = {};
+      entries.forEach(([name, weight]) => {
+        const mk = genreMoodKey(name, topTracksItems, songGenres, featuresMap, 0);
+        moodAgg[mk] = (moodAgg[mk] ?? 0) + weight;
+      });
+      const moodEntries = Object.entries(moodAgg).sort((a, b) => b[1] - a[1]);
+      genres = moodEntries.map(([moodKey, weight], i) => ({
+        name: MOOD_LABELS_TR[moodKey] ?? moodKey,
         percentage: Math.round((weight / total) * 100),
         mood: '',
-        moodKey: genreMoodKey(name, topTracksItems, songGenres, featuresMap, i),
+        moodKey,
         color: COLORS[i % COLORS.length],
       }));
     }
   }
 
-  // Fallback 1: genre_analysis.genres (already computed percentages)
-  if (genres.length === 0 && (raw?.genre_analysis?.genres?.length ?? 0) > 0) {
-    const filtered = (raw?.genre_analysis?.genres ?? []).filter((g) => isValidGenre(g.name));
-    genres = filtered.slice(0, 6).map((g, i) => ({
-      name: g.name,
-      percentage: g.percentage,
-      mood: '',
-      moodKey: genreMoodKey(g.name, topTracksItems, songGenres, featuresMap, i),
-      color: COLORS[i % COLORS.length],
-    }));
-  }
-
-  // Fallback 2: Spotify artist.genres
-  if (genres.length === 0) {
-    const artistGenreCounts: Record<string, number> = {};
-    (raw?.top_artists_short?.items ?? []).forEach((a) => {
-      (a.genres ?? []).filter(isValidGenre).forEach((g) => {
-        artistGenreCounts[g] = (artistGenreCounts[g] ?? 0) + 1;
-      });
-    });
-    const sorted = Object.entries(artistGenreCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
-    if (sorted.length > 0) {
-      const total = sorted.reduce((s, [, c]) => s + c, 0) || 1;
-      genres = sorted.map(([name], i) => ({
-        name,
-        percentage: Math.round((artistGenreCounts[name]! / total) * 100),
-        mood: '',
-        moodKey: genreMoodKey(name, topTracksItems, songGenres, featuresMap, i),
-        color: COLORS[i % COLORS.length],
-      }));
-    }
-  }
-
-  // Final fallback: "Çeşitli"
+  // Final fallback: "Çeşitli" (no audio features at all)
   if (genres.length === 0) {
     genres = [{ name: 'Çeşitli', percentage: 100, mood: '', moodKey: 'mixed', color: COLORS[5] }];
   }

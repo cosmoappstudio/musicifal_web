@@ -1,17 +1,15 @@
 /**
- * Generate fortune text using Replicate AI
- * If analysisSummary in body: use it. Else: load raw data and build summary.
+ * Generate fortune text using Replicate AI.
+ * Always loads full raw data and computes fresh analysis params for a personalized prompt.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/client';
 import { generateText } from '@/lib/replicate/client';
 import { getSession } from '@/lib/session';
-import { buildFortuneAnalysisSummary, getFortuneDataParamsDescription, paramsToPromptText, type ComputedParams } from '@/lib/fortune/build-summary';
+import { computeFortuneParams, getFortuneDataParamsDescription, paramsToPromptText } from '@/lib/fortune/build-summary';
 
 export interface FortuneGenerateBody {
-  /** Optional - if omitted, loads raw data and builds summary */
-  analysisSummary?: string;
   locale?: string;
 }
 
@@ -23,7 +21,6 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceClient();
 
-  let analysisSummary: string;
   let body: FortuneGenerateBody = {};
   try {
     body = await request.json();
@@ -31,30 +28,29 @@ export async function POST(request: NextRequest) {
     body = {};
   }
 
-  if (body.analysisSummary && typeof body.analysisSummary === 'string') {
-    analysisSummary = body.analysisSummary;
-  } else {
-    const { data: raw } = await supabase
-      .from('spotify_raw_data')
-      .select('recently_played, genre_analysis, top_artists_short, computed_params')
-      .eq('user_id', userId)
-      .order('fetched_at', { ascending: false })
-      .limit(1)
-      .single();
-    if (!raw?.recently_played?.length) {
-      return NextResponse.json({ error: 'No Spotify data. Önce Verilerimi Getir yap.' }, { status: 400 });
-    }
-    const params = raw.computed_params as ComputedParams | null;
-    if (params?.last50Songs?.length || params?.top10Repeated?.length || params?.topGenres || params?.rhythmOfDay) {
-      analysisSummary = paramsToPromptText(params);
-    } else {
-      analysisSummary = buildFortuneAnalysisSummary({
-        recentlyPlayed: raw.recently_played as Array<{ played_at?: string; track?: { id?: string; name?: string; artists?: { name?: string }[] } }>,
-        genreAnalysis: raw.genre_analysis as { genres?: Array<{ name: string; percentage: number }>; songGenres?: Array<{ song: string; artist: string; genre: string }> } | null,
-        topArtistsShort: raw.top_artists_short as { items?: Array<{ name?: string; genres?: string[] }> },
-      });
-    }
+  // Always load full raw data so the prompt is as rich and personalized as possible
+  const { data: raw } = await supabase
+    .from('spotify_raw_data')
+    .select('recently_played, genre_analysis, top_artists_short, top_tracks_short, audio_features, devices')
+    .eq('user_id', userId)
+    .order('fetched_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!raw?.recently_played?.length) {
+    return NextResponse.json({ error: 'No Spotify data. Önce Verilerimi Getir yap.' }, { status: 400 });
   }
+
+  // Compute fresh analysis params — includes audio profile, devices, rhythm, repeated tracks
+  const freshParams = computeFortuneParams({
+    recentlyPlayed: raw.recently_played as Parameters<typeof computeFortuneParams>[0]['recentlyPlayed'],
+    genreAnalysis: raw.genre_analysis as Parameters<typeof computeFortuneParams>[0]['genreAnalysis'],
+    topArtistsShort: raw.top_artists_short as Parameters<typeof computeFortuneParams>[0]['topArtistsShort'],
+    audioFeatures: raw.audio_features as Parameters<typeof computeFortuneParams>[0]['audioFeatures'],
+    devices: raw.devices as Parameters<typeof computeFortuneParams>[0]['devices'],
+  });
+
+  const analysisSummary = paramsToPromptText(freshParams);
 
   // Load AI settings
   const { data: settings, error: settingsErr } = await supabase

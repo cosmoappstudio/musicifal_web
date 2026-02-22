@@ -2,9 +2,6 @@
 
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
-import { RefreshCw } from 'lucide-react';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   PieChart,
   Pie,
@@ -16,20 +13,16 @@ import { useDashboard } from '@/context/DashboardContext';
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: ReadonlyArray<{ name: string; value: number; payload: { mood: string; moodKey?: string } }>;
-  t: (key: string) => string;
+  payload?: ReadonlyArray<{ name: string; value: number }>;
 }
 
-function CustomTooltip({ active, payload, t }: CustomTooltipProps) {
+function CustomTooltip({ active, payload }: CustomTooltipProps) {
   if (active && payload && payload.length) {
     const item = payload[0];
-    const moodKey = (item.payload as { moodKey?: string }).moodKey;
-    const moodLabel = moodKey ? t(`mood${moodKey.charAt(0).toUpperCase() + moodKey.slice(1)}` as 'moodIntrospective') : item.payload.mood;
     return (
       <div className="bg-[#1A1535] border border-white/10 rounded-xl px-4 py-3 shadow-xl">
         <p className="font-semibold text-sm text-white">{item.name}</p>
         <p className="text-[#A855F7] text-lg font-bold">{item.value}%</p>
-        <p className="text-[#A598C7] text-xs mt-0.5">{moodLabel}</p>
       </div>
     );
   }
@@ -40,27 +33,6 @@ export default function GenreChart() {
   const t = useTranslations('dashboard');
   const { analysis } = useDashboard();
   const genres = analysis?.genres ?? [];
-  const router = useRouter();
-  const [analyzing, setAnalyzing] = useState(false);
-  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
-
-  const isGenreFallback = genres.length === 1 && genres[0]?.name === 'Çeşitli';
-
-  const handleReanalyze = async () => {
-    setAnalyzing(true);
-    setAnalyzeError(null);
-    try {
-      const res = await fetch('/api/spotify/reanalyze-genres', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Analiz başarısız');
-      if (data.genres === 0) throw new Error('Tür bulunamadı. Lütfen tekrar deneyin.');
-      router.refresh();
-    } catch (e) {
-      setAnalyzeError(e instanceof Error ? e.message : 'Hata oluştu');
-    } finally {
-      setAnalyzing(false);
-    }
-  };
 
   if (genres.length === 0) return null;
 
@@ -71,24 +43,9 @@ export default function GenreChart() {
       transition={{ duration: 0.5, delay: 0.1 }}
       className="surface-card p-6"
     >
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white">{t('genresTitle')}</h2>
-          <p className="text-sm text-[#A598C7] mt-1">{t('genresSubtitle')}</p>
-        </div>
-        {isGenreFallback && (
-          <div className="flex flex-col items-end gap-1">
-            <button
-              onClick={handleReanalyze}
-              disabled={analyzing}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-[#A855F7] hover:text-white border border-[#7C3AED]/40 hover:border-[#7C3AED] px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
-            >
-              <RefreshCw className={`w-3 h-3 ${analyzing ? 'animate-spin' : ''}`} />
-              {analyzing ? 'Analiz ediliyor...' : 'Türleri Analiz Et'}
-            </button>
-            {analyzeError && <p className="text-xs text-red-400">{analyzeError}</p>}
-          </div>
-        )}
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-white">{t('genresTitle')}</h2>
+        <p className="text-sm text-[#A598C7] mt-1">{t('genresSubtitle')}</p>
       </div>
 
       <div className="flex flex-col lg:flex-row items-center gap-6">
@@ -118,7 +75,7 @@ export default function GenreChart() {
                   />
                 ))}
               </Pie>
-              <Tooltip content={(props) => <CustomTooltip {...props} t={t} />} />
+              <Tooltip content={(props) => <CustomTooltip {...props} />} />
               {/* Center label */}
               <text
                 x="50%"
@@ -159,10 +116,6 @@ export default function GenreChart() {
                   style={{ backgroundColor: genre.color }}
                 />
                 <span className="text-sm font-medium text-white">{genre.name}</span>
-                <span className="text-xs text-[#A598C7] hidden sm:block">·</span>
-                <span className="text-xs text-[#A598C7] hidden sm:block italic">
-                  {t(`mood${genre.moodKey.charAt(0).toUpperCase() + genre.moodKey.slice(1)}` as 'moodIntrospective')}
-                </span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-20 h-1.5 bg-white/[0.08] rounded-full overflow-hidden">
