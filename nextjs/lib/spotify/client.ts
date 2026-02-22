@@ -31,7 +31,9 @@ async function spotifyFetch<T>(
   });
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Spotify API ${res.status}: ${err}`);
+    const msg = `Spotify API ${res.status} ${endpoint}: ${err}`;
+    console.error('[Spotify]', msg);
+    throw new Error(msg);
   }
   return res.json();
 }

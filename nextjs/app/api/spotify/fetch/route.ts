@@ -92,7 +92,7 @@ export async function POST() {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Fetch failed';
-    console.error('Spotify fetch error:', msg, err);
+    console.error('[Spotify fetch] userId=', userId, 'error=', msg);
     // 403 = user not in Spotify allowlist or scope issue
     const is403 = msg.includes('403');
     return NextResponse.json(
