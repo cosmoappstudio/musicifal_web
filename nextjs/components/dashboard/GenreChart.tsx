@@ -2,6 +2,9 @@
 
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
+import { RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   PieChart,
   Pie,
@@ -37,6 +40,27 @@ export default function GenreChart() {
   const t = useTranslations('dashboard');
   const { analysis } = useDashboard();
   const genres = analysis?.genres ?? [];
+  const router = useRouter();
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+
+  const isGenreFallback = genres.length === 1 && genres[0]?.name === 'Çeşitli';
+
+  const handleReanalyze = async () => {
+    setAnalyzing(true);
+    setAnalyzeError(null);
+    try {
+      const res = await fetch('/api/spotify/reanalyze-genres', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Analiz başarısız');
+      router.refresh();
+    } catch (e) {
+      setAnalyzeError(e instanceof Error ? e.message : 'Hata');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   if (genres.length === 0) return null;
 
   return (
@@ -46,9 +70,24 @@ export default function GenreChart() {
       transition={{ duration: 0.5, delay: 0.1 }}
       className="surface-card p-6"
     >
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-white">{t('genresTitle')}</h2>
-        <p className="text-sm text-[#A598C7] mt-1">{t('genresSubtitle')}</p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-white">{t('genresTitle')}</h2>
+          <p className="text-sm text-[#A598C7] mt-1">{t('genresSubtitle')}</p>
+        </div>
+        {isGenreFallback && (
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={handleReanalyze}
+              disabled={analyzing}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-[#A855F7] hover:text-white border border-[#7C3AED]/40 hover:border-[#7C3AED] px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
+            >
+              <RefreshCw className={`w-3 h-3 ${analyzing ? 'animate-spin' : ''}`} />
+              {analyzing ? 'Analiz ediliyor...' : 'Türleri Analiz Et'}
+            </button>
+            {analyzeError && <p className="text-xs text-red-400">{analyzeError}</p>}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row items-center gap-6">
