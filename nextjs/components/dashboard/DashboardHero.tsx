@@ -1,10 +1,13 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Zap, Calendar } from 'lucide-react';
+import { Zap, Calendar, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
 import { useDashboard } from '@/context/DashboardContext';
 import ShareStoryButton from './ShareStoryButton';
 import ShareWhatsAppButton from './ShareWhatsAppButton';
+
+const REFRESH_STEPS = ['Veriler çekiliyor…', 'Türler analiz ediliyor…', 'Yükleniyor…'] as const;
 
 const MOOD_STYLES: Record<string, string> = {
   introspective: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
@@ -19,6 +22,31 @@ const MOOD_STYLES: Record<string, string> = {
 export default function DashboardHero({ locale }: { locale: string }) {
   const t = useTranslations('dashboard');
   const { user, analysis, rawFetchedAt } = useDashboard();
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshStep, setRefreshStep] = useState(0);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setRefreshStep(0);
+    try {
+      const res = await fetch('/api/spotify/fetch', { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Veri çekme başarısız');
+        return;
+      }
+      setRefreshStep(1);
+      try {
+        await fetch('/api/spotify/reanalyze-genres', { method: 'POST' });
+      } catch { /* genre analizi başarısız olsa da devam */ }
+      setRefreshStep(2);
+      window.location.reload();
+    } catch {
+      alert('Veri yenileme başarısız');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const periodStart = rawFetchedAt ? new Date(new Date(rawFetchedAt).getTime() - 14 * 24 * 60 * 60 * 1000) : new Date();
   const periodEnd = rawFetchedAt ? new Date(rawFetchedAt) : new Date();
@@ -72,6 +100,17 @@ export default function DashboardHero({ locale }: { locale: string }) {
         <div className="flex items-center gap-2 flex-wrap">
           <ShareStoryButton />
           <ShareWhatsAppButton />
+          {analysis && (
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="Verileri yenile"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-[#A598C7] hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? REFRESH_STEPS[refreshStep] : 'Yenile'}
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -4,29 +4,48 @@ import { useTranslations } from 'next-intl';
 import { Music2, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 
+const STEPS = [
+  'Spotify verileri çekiliyor…',
+  'Müzik türleri analiz ediliyor…',
+  'Hazırlanıyor…',
+] as const;
+
 export default function FetchDataPrompt() {
   const t = useTranslations('dashboard');
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(0);
 
   const handleFetch = async () => {
     setLoading(true);
+    setStep(0);
     try {
+      // 1. Spotify verisini çek
       const res = await fetch('/api/spotify/fetch', { method: 'POST' });
-      if (res.ok) {
-        window.location.reload();
-      } else {
+      if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         const msg = data.error === 'spotify_403' && data.detail
           ? data.detail
           : data.error || 'Failed to fetch data';
         alert(msg);
-        // 403 = suggest reconnect
         if (res.status === 403) {
           if (window.confirm('Spotify ile yeniden bağlanmak ister misin?')) {
             window.location.href = '/api/auth/spotify?reconnect=1';
           }
         }
+        return;
       }
+
+      // 2. Arka planda genre analizi çalıştır
+      setStep(1);
+      try {
+        await fetch('/api/spotify/reanalyze-genres', { method: 'POST' });
+      } catch {
+        // genre analizi başarısız olsa da devam et
+      }
+
+      // 3. Sayfayı yenile
+      setStep(2);
+      window.location.reload();
     } catch {
       alert('Failed to fetch data');
     } finally {
@@ -48,7 +67,7 @@ export default function FetchDataPrompt() {
         disabled={loading}
         className="inline-flex items-center gap-2 bg-[#1DB954] hover:bg-[#1aa34a] disabled:opacity-70 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-all"
       >
-        {loading ? t('fetching') : t('fetchDataCta')}
+        {loading ? STEPS[step] : t('fetchDataCta')}
         <ArrowRight className="w-4 h-4" />
       </button>
     </div>
