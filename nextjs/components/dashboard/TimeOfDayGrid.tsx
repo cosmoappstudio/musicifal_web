@@ -92,9 +92,6 @@ export default function TimeOfDayGrid() {
               <p className="text-[10px] text-[#A598C7]/60 mb-2">{data.time}</p>
 
               <p className="text-base font-bold text-white leading-tight">{data.genre}</p>
-              <p className="text-xs text-[#A598C7] mt-1 italic">
-                {t(`mood${data.moodKey.charAt(0).toUpperCase() + data.moodKey.slice(1)}` as 'moodFocused')}
-              </p>
 
               <div className="mt-3 pt-3 border-t border-white/[0.06]">
                 <p className="text-xs text-[#A598C7]">

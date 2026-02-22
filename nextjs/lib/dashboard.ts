@@ -343,24 +343,44 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
   const TZ_OFFSET_HOURS = 3;
   const timeSlots = { morning: 0, afternoon: 0, evening: 0, night: 0 };
   const slotGenres: Record<string, Record<string, number>> = { morning: {}, afternoon: {}, evening: {}, night: {} };
+  const slotTrackIds: Record<string, string[]> = { morning: [], afternoon: [], evening: [], night: [] };
 
   played.forEach((p) => {
     const utcHour = new Date(p.played_at || 0).getUTCHours();
     const h = (utcHour + TZ_OFFSET_HOURS) % 24;
     const slot: keyof typeof timeSlots = h >= 6 && h < 12 ? 'morning' : h >= 12 && h < 18 ? 'afternoon' : h >= 18 ? 'evening' : 'night';
     timeSlots[slot]++;
+    if (p.track?.id) slotTrackIds[slot].push(p.track.id);
     const g = songGenres.length ? getGenreForTrack(p.track?.name ?? '', p.track?.artists?.[0]?.name ?? '', songGenres) : '';
     if (g && isValidGenre(g)) slotGenres[slot][g] = (slotGenres[slot][g] ?? 0) + 1;
   });
 
-  const dominantGenre = (counts: Record<string, number>) =>
-    Object.entries(counts).filter(([n]) => isValidGenre(n)).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—';
+  // Dominant mood per slot from audio features (no genre names)
+  const slotMoodKey = (ids: string[]): string => {
+    const counts: Record<string, number> = {};
+    ids.forEach((id) => {
+      const af = featuresMap.get(id);
+      if (!af || typeof af.energy !== 'number' || typeof af.valence !== 'number') return;
+      const mk = trackMoodKey(af.energy, af.valence);
+      counts[mk] = (counts[mk] ?? 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+  };
+
+  const slotMoods = {
+    morning:   slotMoodKey(slotTrackIds.morning),
+    afternoon: slotMoodKey(slotTrackIds.afternoon),
+    evening:   slotMoodKey(slotTrackIds.evening),
+    night:     slotMoodKey(slotTrackIds.night),
+  };
+
+  const slotLabel = (mk: string) => (mk ? MOOD_LABELS_TR[mk] ?? '—' : '—');
 
   const timeOfDay = {
-    morning:   { genre: dominantGenre(slotGenres.morning),   mood: '', moodKey: 'focused',     trackCount: timeSlots.morning },
-    afternoon: { genre: dominantGenre(slotGenres.afternoon), mood: '', moodKey: 'thoughtful',  trackCount: timeSlots.afternoon },
-    evening:   { genre: dominantGenre(slotGenres.evening),   mood: '', moodKey: 'romantic',    trackCount: timeSlots.evening },
-    night:     { genre: dominantGenre(slotGenres.night),     mood: '', moodKey: 'intense',     trackCount: timeSlots.night },
+    morning:   { genre: slotLabel(slotMoods.morning),   mood: '', moodKey: slotMoods.morning   || '', trackCount: timeSlots.morning },
+    afternoon: { genre: slotLabel(slotMoods.afternoon), mood: '', moodKey: slotMoods.afternoon || '', trackCount: timeSlots.afternoon },
+    evening:   { genre: slotLabel(slotMoods.evening),   mood: '', moodKey: slotMoods.evening   || '', trackCount: timeSlots.evening },
+    night:     { genre: slotLabel(slotMoods.night),     mood: '', moodKey: slotMoods.night     || '', trackCount: timeSlots.night },
   };
 
   // ── Devices ───────────────────────────────────────────────────────────────
