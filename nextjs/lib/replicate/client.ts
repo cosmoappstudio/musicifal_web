@@ -31,26 +31,35 @@ export async function generateText(params: GenerateFortuneParams): Promise<strin
     temperature = 0.85,
   } = params;
 
-  // Replicate LLMs vary: some use prompt only, some use prompt + system_prompt
-  const input: Record<string, unknown> = {
-    prompt: userPrompt,
-    max_tokens: maxTokens,
-    temperature: Math.min(2, Math.max(0, temperature)),
-  };
-  if (systemPrompt) {
-    input.system_prompt = systemPrompt;
-  }
+  const isGemini = modelId.startsWith('google/gemini');
+  const temp = Math.min(2, Math.max(0, temperature));
+
+  const input: Record<string, unknown> = isGemini
+    ? {
+        prompt: userPrompt,
+        max_output_tokens: maxTokens,
+        temperature: temp,
+        ...(systemPrompt ? { system_instruction: systemPrompt } : {}),
+      }
+    : {
+        prompt: userPrompt,
+        max_tokens: maxTokens,
+        temperature: temp,
+        ...(systemPrompt ? { system_prompt: systemPrompt } : {}),
+      };
 
   const output = (await replicate.run(modelId as `${string}/${string}`, { input })) as unknown;
 
   // Output can be: string, string[], or { output: string }
   if (typeof output === 'string') return output.trim();
-  if (Array.isArray(output) && output.length > 0) {
-    const first = output[0];
-    return typeof first === 'string' ? first.trim() : String(first).trim();
+  if (Array.isArray(output)) {
+    return output.map((c) => (typeof c === 'string' ? c : String(c ?? ''))).join('').trim();
   }
   if (output && typeof output === 'object' && 'output' in output) {
     const out = (output as { output: unknown }).output;
+    if (Array.isArray(out)) {
+      return out.map((c) => (typeof c === 'string' ? c : String(c ?? ''))).join('').trim();
+    }
     return typeof out === 'string' ? out.trim() : String(out ?? '').trim();
   }
 
