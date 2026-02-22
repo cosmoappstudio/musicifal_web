@@ -92,6 +92,15 @@ export const mockAnalysis: MockAnalysis = {
     { rank: 2, name: 'The Less I Know The Better', artist: 'Tame Impala', albumArt: 'https://i.scdn.co/image/ab67616d0000b2739e1cfc756886ac782e363d2e', playCount: 31 },
     { rank: 3, name: 'Heat Waves', artist: 'Glass Animals', albumArt: 'https://i.scdn.co/image/ab67616d0000b2739e495fb707973f3390850eea', playCount: 24 },
   ],
+  devices: [],
+  audioProfile: {
+    avgValence: 0.52,
+    avgEnergy: 0.67,
+    avgDanceability: 0.61,
+    avgTempo: 118,
+    avgAcousticness: 0.21,
+    trackCount: 50,
+  },
 };
 
 // ─── Fortune ──────────────────────────────────────────────────────────────────
