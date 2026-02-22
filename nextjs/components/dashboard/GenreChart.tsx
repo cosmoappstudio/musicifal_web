@@ -53,9 +53,10 @@ export default function GenreChart() {
       const res = await fetch('/api/spotify/reanalyze-genres', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Analiz başarısız');
+      if (data.genres === 0) throw new Error('Tür bulunamadı. Lütfen tekrar deneyin.');
       router.refresh();
     } catch (e) {
-      setAnalyzeError(e instanceof Error ? e.message : 'Hata');
+      setAnalyzeError(e instanceof Error ? e.message : 'Hata oluştu');
     } finally {
       setAnalyzing(false);
     }

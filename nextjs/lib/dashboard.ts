@@ -244,11 +244,14 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
   }));
 
   // ── Time of Day (from recently_played — has played_at timestamps) ─────────
+  // played_at is UTC; add UTC+3 offset for Turkey local time
+  const TZ_OFFSET_HOURS = 3;
   const timeSlots = { morning: 0, afternoon: 0, evening: 0, night: 0 };
   const slotGenres: Record<string, Record<string, number>> = { morning: {}, afternoon: {}, evening: {}, night: {} };
 
   played.forEach((p) => {
-    const h = new Date(p.played_at || 0).getHours();
+    const utcHour = new Date(p.played_at || 0).getUTCHours();
+    const h = (utcHour + TZ_OFFSET_HOURS) % 24;
     const slot: keyof typeof timeSlots = h >= 6 && h < 12 ? 'morning' : h >= 12 && h < 18 ? 'afternoon' : h >= 18 ? 'evening' : 'night';
     timeSlots[slot]++;
     const g = songGenres.length ? getGenreForTrack(p.track?.name ?? '', p.track?.artists?.[0]?.name ?? '', songGenres) : '';

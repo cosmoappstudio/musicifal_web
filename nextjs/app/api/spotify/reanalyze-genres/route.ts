@@ -45,7 +45,9 @@ export async function POST() {
       const key = `${p.track?.name ?? ''}|${p.track?.artists?.[0]?.name ?? ''}`.toLowerCase();
       if (!seen.has(key)) { seen.add(key); songsForAnalysis.push({ name: p.track?.name ?? '', artist: p.track?.artists?.[0]?.name ?? '', playedAt: p.played_at }); }
     });
-  const songs = songsForAnalysis.slice(0, 80);
+  // analyzeGenres internally caps to 30; no need to send more
+  const songs = songsForAnalysis.slice(0, 30);
+  console.log(`[reanalyze-genres] userId=${userId}, songs=${songs.length}, model=${modelId}`);
 
   try {
     const genreAnalysis = await analyzeGenres(songs, modelId);

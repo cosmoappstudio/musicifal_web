@@ -82,7 +82,8 @@ export function computeFortuneParams(params: {
     night: { count: 0, genres: {} },
   };
   lastSongs.forEach((p) => {
-    const h = new Date(p.played_at ?? 0).getHours();
+    const utcH = new Date(p.played_at ?? 0).getUTCHours();
+    const h = (utcH + 3) % 24; // UTC+3 (Turkey)
     const slot = hourToSlot(h);
     slots[slot].count++;
     const genre = songGenres.length ? getGenreFor(p.track?.name ?? '', p.track?.artists?.[0]?.name ?? '', songGenres) : '';

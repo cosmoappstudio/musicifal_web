@@ -19,36 +19,44 @@ const GENRE_ANALYSIS_SYSTEM = `Sen bir müzik uzmanısın. Verilen şarkı liste
 
 function parseGenreAnalysis(text: string): GenreAnalysisResult {
   try {
-    const cleaned = text.replace(/```json\s?/g, '').replace(/```\s?/g, '').trim();
+    // Strip markdown code fences and any leading/trailing prose
+    let cleaned = text
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim();
+
+    // If model added prose before/after JSON, extract the first {...} block
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+      cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
+    }
+
     const parsed = JSON.parse(cleaned) as GenreAnalysisResult;
     if (!Array.isArray(parsed.genres) || !Array.isArray(parsed.songGenres)) {
+      console.warn('[GenreAnalysis] parsed JSON missing genres or songGenres arrays');
       return { genres: [], songGenres: [] };
     }
-    return parsed;
-  } catch {
+    return {
+      genres: parsed.genres.filter((g) => g.name && typeof g.percentage === 'number'),
+      songGenres: parsed.songGenres.filter((sg) => sg.song && sg.artist && sg.genre),
+    };
+  } catch (e) {
+    console.error('[GenreAnalysis] JSON parse failed. Raw output (first 500 chars):', text?.slice(0, 500), 'Error:', e);
     return { genres: [], songGenres: [] };
   }
 }
 
+// Max songs to send — keep response small to avoid token truncation
+const MAX_SONGS_FOR_ANALYSIS = 30;
+
 export async function analyzeGenres(
   songs: Array<{ name: string; artist: string; playedAt?: string }>,
-  modelId: string = 'meta/meta-llama-3-8b-instruct'
+  modelId: string = 'google/gemini-2.5-flash'
 ): Promise<GenreAnalysisResult> {
   if (songs.length === 0) {
     return { genres: [], songGenres: [] };
   }
-
-  const list = songs
-    .slice(0, 50)
-    .map((s, i) => `${i + 1}. "${s.name}" - ${s.artist}`)
-    .join('\n');
-
-  const userPrompt = `Bu şarkı listesini analiz et ve JSON döndür:
-
-${list}
-
-Yanıt sadece şu formatta JSON olsun. genre/name SADECE müzik türü (Pop, Rock, Trap vb.), SANATÇI ADI DEĞİL:
-{"genres":[{"name":"Pop","percentage":35},{"name":"Hip Hop","percentage":25}],"songGenres":[{"song":"Şarkı","artist":"Sanatçı","genre":"Pop"}]}`;
 
   const token = process.env.REPLICATE_API_TOKEN;
   if (!token) {
@@ -56,17 +64,29 @@ Yanıt sadece şu formatta JSON olsun. genre/name SADECE müzik türü (Pop, Roc
     return { genres: [], songGenres: [] };
   }
 
+  const selected = songs.slice(0, MAX_SONGS_FOR_ANALYSIS);
+  const list = selected.map((s, i) => `${i + 1}. "${s.name}" - ${s.artist}`).join('\n');
+
+  const userPrompt = `Aşağıdaki şarkı listesini analiz et. SADECE geçerli JSON döndür, başka metin yazma.
+
+${list}
+
+Beklenen format (genre alanları SADECE müzik türü: Pop, Rock, Hip Hop, Trap, R&B, Indie, Lo-fi, K-Pop, Türkçe Pop vb.):
+{"genres":[{"name":"Hip Hop","percentage":40},{"name":"Pop","percentage":30}],"songGenres":[{"song":"${selected[0]?.name ?? 'Şarkı'}","artist":"${selected[0]?.artist ?? 'Sanatçı'}","genre":"Hip Hop"}]}`;
+
   try {
     const output = await generateText({
       modelId,
       systemPrompt: GENRE_ANALYSIS_SYSTEM,
       userPrompt,
-      maxTokens: 2048,
-      temperature: 0.3,
+      maxTokens: 4096,
+      temperature: 0.2,
     });
-    return parseGenreAnalysis(output);
+    const result = parseGenreAnalysis(output);
+    console.log(`[GenreAnalysis] OK — ${result.genres.length} genres, ${result.songGenres.length} songGenres`);
+    return result;
   } catch (err) {
-    console.error('[GenreAnalysis] error:', err);
+    console.error('[GenreAnalysis] error:', err instanceof Error ? err.message : err);
     return { genres: [], songGenres: [] };
   }
 }
