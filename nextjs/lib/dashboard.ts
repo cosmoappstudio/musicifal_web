@@ -106,27 +106,50 @@ function trackMoodKey(energy: number, valence: number): string {
 
 /**
  * Derives a mood distribution directly from audio features — no genre names needed.
- * Uses rank-weighted scoring: rank #1 track contributes 50 points, rank #50 contributes 1.
- * Returns null if fewer than 8 tracks have audio features (not enough signal).
+ * Primary: top_tracks rank-weighted (rank #1 = 50pts). Backup: recently_played play-count weighted.
+ * Returns null if fewer than 8 unique tracks have audio features (not enough signal).
  */
 function computeMoodDistribution(
   topTracksItems: Array<{ id?: string }>,
+  recentlyPlayedItems: Array<{ track?: { id?: string } }>,
   featuresMap: Map<string, RawAudioFeature>,
 ): Array<{ name: string; percentage: number; moodKey: string; color: string; mood: string }> | null {
+  const seenIds = new Set<string>();
   const moodWeights: Record<string, number> = {};
   let totalWeight = 0;
   let tracksWithFeatures = 0;
 
+  // Primary: top_tracks with rank weighting
   topTracksItems.slice(0, 50).forEach((t, i) => {
-    if (!t.id) return;
+    if (!t.id || seenIds.has(t.id)) return;
     const af = featuresMap.get(t.id);
     if (!af || typeof af.energy !== 'number' || typeof af.valence !== 'number') return;
+    seenIds.add(t.id);
     tracksWithFeatures++;
     const mood = trackMoodKey(af.energy, af.valence);
     const weight = Math.max(1, 50 - i);
     moodWeights[mood] = (moodWeights[mood] ?? 0) + weight;
     totalWeight += weight;
   });
+
+  // Backup: recently_played play-count weighting (always has audio features in the map)
+  if (tracksWithFeatures < 8) {
+    const playCounts: Record<string, number> = {};
+    recentlyPlayedItems.forEach((p) => {
+      const id = p.track?.id;
+      if (id) playCounts[id] = (playCounts[id] ?? 0) + 1;
+    });
+    Object.entries(playCounts).forEach(([id, count]) => {
+      if (seenIds.has(id)) return;
+      const af = featuresMap.get(id);
+      if (!af || typeof af.energy !== 'number' || typeof af.valence !== 'number') return;
+      seenIds.add(id);
+      tracksWithFeatures++;
+      const mood = trackMoodKey(af.energy, af.valence);
+      moodWeights[mood] = (moodWeights[mood] ?? 0) + count;
+      totalWeight += count;
+    });
+  }
 
   if (tracksWithFeatures < 8 || totalWeight === 0) return null;
 
@@ -216,12 +239,12 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
   let genres: Array<{ name: string; percentage: number; mood: string; moodKey: string; color: string }> = [];
 
   // Primary: audio features → our own mood interpretation (no genre names)
-  const moodDist = computeMoodDistribution(topTracksItems, featuresMap);
+  const moodDist = computeMoodDistribution(topTracksItems, played, featuresMap);
   if (moodDist && moodDist.length >= 2) {
     genres = moodDist;
   }
 
-  // Fallback: use Gemini genre analysis with mood labels replacing genre names
+  // Fallback: use Gemini genre analysis, aggregate genres into mood buckets
   if (genres.length === 0 && songGenres.length) {
     const genreWeights: Record<string, number> = {};
     topTracksItems.slice(0, 50).forEach((t, i) => {
@@ -239,10 +262,10 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     const entries = Object.entries(genreWeights).sort((a, b) => b[1] - a[1]).slice(0, 6);
     if (entries.length > 0) {
       const total = entries.reduce((s, [, w]) => s + w, 0) || 1;
-      // Aggregate entries by moodKey so we show moods, not genre names
+      // Aggregate entries by moodKey — pass correct index so fallback varies per genre
       const moodAgg: Record<string, number> = {};
-      entries.forEach(([name, weight]) => {
-        const mk = genreMoodKey(name, topTracksItems, songGenres, featuresMap, 0);
+      entries.forEach(([name, weight], i) => {
+        const mk = genreMoodKey(name, topTracksItems, songGenres, featuresMap, i);
         moodAgg[mk] = (moodAgg[mk] ?? 0) + weight;
       });
       const moodEntries = Object.entries(moodAgg).sort((a, b) => b[1] - a[1]);
