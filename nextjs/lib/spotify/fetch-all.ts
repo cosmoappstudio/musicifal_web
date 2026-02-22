@@ -42,7 +42,7 @@ export async function fetchAllSpotifyData(
     devices,
   ] = await Promise.all([
     getSpotifyProfile(accessToken),
-    getAllRecentlyPlayed(accessToken),
+    getAllRecentlyPlayed(accessToken, { maxPages: 25, afterDays: 14 }),
     getTopArtists(accessToken, 'short_term', 50),
     getTopArtists(accessToken, 'medium_term', 50),
     getTopArtists(accessToken, 'long_term', 50),

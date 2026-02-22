@@ -52,7 +52,7 @@ export async function getRecentlyPlayed(
 ): Promise<SpotifyRecentlyPlayedResponse> {
   const params: Record<string, string | number> = { limit };
   if (before != null) params.before = before;
-  if (after != null) params.after = after;
+  if (after != null) params.after = after; // Spotify: Unix timestamp (seconds)
   return spotifyFetch<SpotifyRecentlyPlayedResponse>(
     accessToken,
     '/me/player/recently-played',
@@ -62,18 +62,24 @@ export async function getRecentlyPlayed(
 
 export async function getAllRecentlyPlayed(
   accessToken: string,
-  maxPages = 10
+  options?: { maxPages?: number; afterDays?: number }
 ): Promise<SpotifyRecentlyPlayedResponse['items']> {
+  const maxPages = options?.maxPages ?? 25;
+  const afterDays = options?.afterDays;
   const all: SpotifyRecentlyPlayedResponse['items'] = [];
   let before: number | undefined;
+  let after: number | undefined;
+  if (afterDays != null && afterDays > 0) {
+    after = Date.now() - afterDays * 24 * 60 * 60 * 1000; // Spotify: milliseconds
+  }
   for (let i = 0; i < maxPages; i++) {
-    const data = await getRecentlyPlayed(accessToken, 50, before);
+    const data = await getRecentlyPlayed(accessToken, 50, before, after);
     if (data.items.length === 0) break;
     all.push(...data.items);
-    const oldest = data.items[data.items.length - 1];
-    const ts = new Date(oldest.played_at).getTime();
-    before = ts;
     if (!data.next) break;
+    const oldest = data.items[data.items.length - 1];
+    before = new Date(oldest.played_at).getTime(); // milliseconds
+    after = undefined; // Spotify: after ve before aynı anda kullanılamaz
   }
   return all;
 }

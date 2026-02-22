@@ -66,41 +66,43 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
   });
 
   const topArtistsList = (raw?.top_artists_short?.items ?? allArtists).slice(0, 10);
-  const artistNames = new Set(topArtistsList.map((a) => a.name?.toLowerCase().trim()).filter(Boolean));
+  const allArtistNames = new Set(allArtists.map((a) => a.name?.toLowerCase().trim()).filter(Boolean));
 
   const isValidGenre = (name: string) => {
     const n = name?.trim().toLowerCase();
     if (!n) return false;
-    if (artistNames.has(n)) return false; // sanatçı adı değil
+    if (allArtistNames.has(n)) return false; // sanatçı adı değil
     return true;
   };
 
-  let genres: Array<{ name: string; percentage: number; mood: string; moodKey: string; color: string }>;
+  let genres: Array<{ name: string; percentage: number; mood: string; moodKey: string; color: string }> = [];
+  const songGenres = raw?.genre_analysis?.songGenres ?? [];
 
-  if (raw?.genre_analysis?.songGenres?.length) {
-    const sg = raw.genre_analysis.songGenres;
-    const genreCountsFromSongs: Record<string, number> = {};
-    sg.forEach((s) => {
-      const g = s.genre?.trim();
+  if (songGenres.length && played.length) {
+    // song.name + artist ile genre eşle; her dinlenme için say (play ağırlıklı)
+    const genreCountsFromPlays: Record<string, number> = {};
+    played.forEach((p) => {
+      const g = getGenreForTrack(p.track?.name ?? '', p.track?.artists?.[0]?.name ?? '', songGenres).trim();
       if (g && isValidGenre(g)) {
-        genreCountsFromSongs[g] = (genreCountsFromSongs[g] ?? 0) + 1;
+        genreCountsFromPlays[g] = (genreCountsFromPlays[g] ?? 0) + 1;
       }
     });
-    const total = Object.values(genreCountsFromSongs).reduce((a, b) => a + b, 0) || 1;
-    genres = Object.entries(genreCountsFromSongs)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([name], i) => ({
+    const entries = Object.entries(genreCountsFromPlays).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    if (entries.length > 0) {
+      const total = Object.values(genreCountsFromPlays).reduce((a, b) => a + b, 0) || 1;
+      genres = entries.map(([name], i) => ({
         name,
-        percentage: Math.round((genreCountsFromSongs[name] / total) * 100),
+        percentage: Math.round((genreCountsFromPlays[name]! / total) * 100),
         mood: '',
         moodKey: MOOD_KEYS[i % MOOD_KEYS.length],
         color: COLORS[i % COLORS.length],
       }));
-    if (genres.length < 2 && Object.keys(genreCountsFromSongs).length > 0) {
-      genres.push({ name: 'Other', percentage: 100 - genres.reduce((s, g) => s + g.percentage, 0), mood: '', moodKey: 'mixed', color: COLORS[5] });
+      if (genres.length < 2) {
+        genres.push({ name: 'Other', percentage: 100 - genres.reduce((s, g) => s + g.percentage, 0), mood: '', moodKey: 'mixed', color: COLORS[5] });
+      }
     }
-  } else if (raw?.genre_analysis?.genres?.length) {
+  }
+  if (genres.length === 0 && raw?.genre_analysis?.genres?.length) {
     const filtered = raw.genre_analysis.genres.filter((g) => isValidGenre(g.name));
     genres = filtered.slice(0, 6).map((g, i) => ({
       name: g.name,
@@ -112,7 +114,8 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     if (genres.length < 2 && filtered.length > 0) {
       genres.push({ name: 'Other', percentage: 100 - genres.reduce((s, g) => s + g.percentage, 0), mood: '', moodKey: 'mixed', color: COLORS[5] });
     }
-  } else if (Object.keys(genreCounts).length > 0) {
+  }
+  if (genres.length === 0 && Object.keys(genreCounts).length > 0) {
     const totalGenre = Object.values(genreCounts).reduce((a, b) => a + b, 0) || 1;
     genres = Object.entries(genreCounts)
       .sort((a, b) => b[1] - a[1])
@@ -127,18 +130,25 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     if (genres.length < 2) {
       genres.push({ name: 'Other', percentage: 100 - genres.reduce((s, g) => s + g.percentage, 0), mood: '', moodKey: 'mixed', color: COLORS[5] });
     }
-  } else {
-    // Spotify often returns empty genres for independent/niche artists - use top artist names as fallback
-    const topForChart = (raw?.top_artists_short?.items ?? allArtists).slice(0, 6);
-    const per = Math.floor(100 / topForChart.length);
-    const remainder = 100 - per * topForChart.length;
-    genres = topForChart.map((a, i) => ({
-      name: a.name,
-      percentage: i === 0 ? per + remainder : per,
-      mood: '',
-      moodKey: MOOD_KEYS[i % MOOD_KEYS.length],
-      color: COLORS[i % COLORS.length],
-    }));
+  }
+  if (genres.length === 0) {
+    // genre_analysis yok: Spotify artist.genres kullan, yoksa "Çeşitli"
+    const spotifyGenres = allArtists.flatMap((a) => (a.genres ?? []).filter((g) => isValidGenre(g)));
+    const genreCountsFallback: Record<string, number> = {};
+    spotifyGenres.forEach((g) => { genreCountsFallback[g] = (genreCountsFallback[g] ?? 0) + 1; });
+    const sorted = Object.entries(genreCountsFallback).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    if (sorted.length >= 1) {
+      const total = sorted.reduce((s, [, c]) => s + c, 0) || 1;
+      genres = sorted.map(([name], i) => ({
+        name,
+        percentage: Math.round((genreCountsFallback[name]! / total) * 100),
+        mood: '',
+        moodKey: MOOD_KEYS[i % MOOD_KEYS.length],
+        color: COLORS[i % COLORS.length],
+      }));
+    } else {
+      genres = [{ name: 'Çeşitli', percentage: 100, mood: '', moodKey: 'mixed', color: COLORS[5] }];
+    }
   }
 
   const artistPlayCounts: Record<string, number> = {};
@@ -160,10 +170,12 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
   const trackCounts: Record<string, { count: number; name: string; artist: string; albumArt: string }> = {};
   played.forEach((p) => {
     const t = p.track;
-    if (!t?.id) return;
-    const key = t.id;
+    const name = t?.name ?? '';
+    const artist = t?.artists?.[0]?.name ?? '';
+    const key = (t as { id?: string })?.id ?? `${name}|${artist}`;
+    if (!key) return;
     if (!trackCounts[key]) {
-      trackCounts[key] = { count: 0, name: t.name, artist: t.artists?.[0]?.name ?? '', albumArt: t.album?.images?.[0]?.url ?? '' };
+      trackCounts[key] = { count: 0, name, artist, albumArt: t?.album?.images?.[0]?.url ?? '' };
     }
     trackCounts[key].count++;
   });
@@ -200,7 +212,6 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     evening: {},
     night: {},
   };
-  const songGenres = raw?.genre_analysis?.songGenres ?? [];
 
   played.forEach((p) => {
     const h = new Date(p.played_at || 0).getHours();
@@ -222,7 +233,7 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     const entries = Object.entries(counts)
       .filter(([name]) => isValidGenre(name))
       .sort((a, b) => b[1] - a[1]);
-    return entries[0]?.[0] ?? genres[0]?.name ?? '—';
+    return entries[0]?.[0] ?? '—';
   };
   const timeOfDay = {
     morning: { genre: dominantGenre(slotGenreCounts.morning), mood: '', moodKey: 'focused', trackCount: timeSlots.morning },

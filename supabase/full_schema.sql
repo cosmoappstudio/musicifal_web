@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS public.fortunes (
 CREATE TABLE IF NOT EXISTS public.app_settings (
   id TEXT PRIMARY KEY DEFAULT 'default',
   -- AI / Replicate
-  replicate_model_id TEXT NOT NULL DEFAULT 'meta/meta-llama-3-8b-instruct',
+  replicate_model_id TEXT NOT NULL DEFAULT 'google/gemini-2.5-flash',
   fortune_prompt_template TEXT NOT NULL DEFAULT 'Sen mistik bir müzik falcısısın. Kullanıcının son 14 günlük dinleme verilerine bakarak Türk kahve falı geleneğinden ilham alan, kişisel ve gizemli bir fal yorumu yaz. 4 paragraf, her biri 3-4 cümle. Akıcı ve şiirsel ol.',
   fortune_max_tokens INTEGER NOT NULL DEFAULT 1024,
   fortune_temperature NUMERIC(3,2) NOT NULL DEFAULT 0.85,
