@@ -47,6 +47,39 @@ interface SpotifyRawData {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
+/**
+ * Derives a mood key from avg energy + valence of tracks belonging to a genre.
+ * Falls back to position-based index if no audio data.
+ */
+function genreMoodKey(
+  genreName: string,
+  topTracksItems: Array<{ id?: string; name?: string; artists?: { name: string }[] }>,
+  songGenres: Array<{ song: string; artist: string; genre: string }>,
+  featuresMap: Map<string, RawAudioFeature>,
+  fallbackIndex: number
+): string {
+  const energies: number[] = [];
+  const valences: number[] = [];
+  topTracksItems.slice(0, 50).forEach((t) => {
+    if (!t.id) return;
+    const g = getGenreForTrack(t.name ?? '', t.artists?.[0]?.name ?? '', songGenres);
+    if (g.toLowerCase().trim() !== genreName.toLowerCase().trim()) return;
+    const af = featuresMap.get(t.id);
+    if (!af) return;
+    if (typeof af.energy === 'number') energies.push(af.energy);
+    if (typeof af.valence === 'number') valences.push(af.valence);
+  });
+  if (energies.length === 0) return MOOD_KEYS[fallbackIndex % MOOD_KEYS.length];
+  const avgE = energies.reduce((s, v) => s + v, 0) / energies.length;
+  const avgV = valences.length > 0 ? valences.reduce((s, v) => s + v, 0) / valences.length : 0.5;
+  if (avgE >= 0.7 && avgV < 0.4) return 'aggressive';
+  if (avgE >= 0.65 && avgV >= 0.5) return 'emotional';
+  if (avgE < 0.4 && avgV < 0.35) return 'introspective';
+  if (avgE < 0.45 && avgV >= 0.5) return 'peaceful';
+  if (avgE < 0.6) return 'calm';
+  return 'mixed';
+}
+
 function getGenreForTrack(
   trackName: string,
   artistName: string,
@@ -145,7 +178,7 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
         name,
         percentage: Math.round((weight / total) * 100),
         mood: '',
-        moodKey: MOOD_KEYS[i % MOOD_KEYS.length],
+        moodKey: genreMoodKey(name, topTracksItems, songGenres, featuresMap, i),
         color: COLORS[i % COLORS.length],
       }));
     }
@@ -158,7 +191,7 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
       name: g.name,
       percentage: g.percentage,
       mood: '',
-      moodKey: MOOD_KEYS[i % MOOD_KEYS.length],
+      moodKey: genreMoodKey(g.name, topTracksItems, songGenres, featuresMap, i),
       color: COLORS[i % COLORS.length],
     }));
   }
@@ -178,7 +211,7 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
         name,
         percentage: Math.round((artistGenreCounts[name]! / total) * 100),
         mood: '',
-        moodKey: MOOD_KEYS[i % MOOD_KEYS.length],
+        moodKey: genreMoodKey(name, topTracksItems, songGenres, featuresMap, i),
         color: COLORS[i % COLORS.length],
       }));
     }

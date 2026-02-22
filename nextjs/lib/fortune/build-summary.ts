@@ -136,48 +136,95 @@ export function computeFortuneParams(params: {
   };
 }
 
-/** Saklanmış computed_params'i prompt metnine çevirir */
+/** Saklanmış computed_params'i Gemini için yorumlanmış prompt metnine çevirir.
+ *  Bu fonksiyon veri ile yapay zeka arasındaki "yorum katmanı"dır:
+ *  Ham sayıları insan ve AI için anlamlı bağlama dönüştürür.
+ */
 export function paramsToPromptText(params: ComputedParams): string {
-  const slotLabel = (k: string) => (k === 'morning' ? '06-12' : k === 'afternoon' ? '12-18' : k === 'evening' ? '18-23' : '23-06');
-  const songsList = params.last50Songs
-    .map((p, i) => `${i + 1}. "${p.name}" - ${p.artist} (${p.playedAt ? new Date(p.playedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'})`)
-    .join('\n');
-  const repeatedList = params.top10Repeated
-    .map((r, i) => `${i + 1}. "${r.name}" - ${r.artist} (${r.count} kez)`)
-    .join('\n');
-  const rhythmLines = (['morning', 'afternoon', 'evening', 'night'] as const).map(
-    (s) => `  ${slotLabel(s)}: ${params.rhythmOfDay[s].count} parça, dominant tür: ${params.rhythmOfDay[s].dominantGenre}`
-  );
   const TYPE_TR: Record<string, string> = { Computer: 'Bilgisayar', Smartphone: 'Telefon', TV: 'TV', Speaker: 'Hoparlör', Automobile: 'Araç' };
-  const devicesLine = (params.devices ?? []).length > 0
-    ? (params.devices ?? []).map((d) => `${TYPE_TR[d.type] ?? d.type} (${d.name})${d.isActive ? ' ← aktif' : ''}`).join(', ')
-    : '-';
+  const SLOT_TR: Record<string, string> = { morning: 'Sabah (06-12)', afternoon: 'Öğleden Sonra (12-18)', evening: 'Akşam (18-23)', night: 'Gece (23-06)' };
 
+  // ── Ses Profili yorumu ───────────────────────────────────────────────────
   const ap = params.audioProfile;
-  const audioProfileLine = ap
-    ? `valence: ${ap.avgValence} (${ap.avgValence >= 0.6 ? 'mutlu/pozitif' : ap.avgValence <= 0.35 ? 'melankolik/karanlık' : 'nötr'}), energy: ${ap.avgEnergy} (${ap.avgEnergy >= 0.7 ? 'yüksek enerji' : ap.avgEnergy <= 0.35 ? 'sakin' : 'orta'}), danceability: ${ap.avgDanceability}, tempo: ${ap.avgTempo} BPM, acousticness: ${ap.avgAcousticness} (${ap.avgAcousticness >= 0.5 ? 'akustik ağırlıklı' : 'elektronik ağırlıklı'})`
-    : '-';
+  let audioInterpretation = 'Ses profili verisi yok.';
+  if (ap && ap.trackCount > 0) {
+    const valenceLabel = ap.avgValence >= 0.65 ? 'pozitif ve mutlu' : ap.avgValence <= 0.35 ? 'melankolik ve karanlık' : 'nötr/duygusal denge';
+    const energyLabel = ap.avgEnergy >= 0.7 ? 'yüksek tempolu, güçlü ve yoğun' : ap.avgEnergy <= 0.35 ? 'sakin, dingin ve yumuşak' : 'orta enerji düzeyinde';
+    const danceLabel = ap.avgDanceability >= 0.65 ? 'dans edilebilir, ritimli' : ap.avgDanceability <= 0.4 ? 'dans edilemez, akış odaklı' : 'orta dans edilebilirlikte';
+    const acousticLabel = ap.avgAcousticness >= 0.5 ? 'akustik/doğal enstrümantasyon' : ap.avgAcousticness <= 0.2 ? 'tamamen elektronik/sentetik' : 'elektronik ağırlıklı';
+    audioInterpretation = `${ap.trackCount} şarkı analiz edildi.
+  - Duygu tonu (valence): ${ap.avgValence.toFixed(2)}/1.0 → ${valenceLabel}
+  - Enerji seviyesi: ${ap.avgEnergy.toFixed(2)}/1.0 → ${energyLabel}
+  - Dans edilebilirlik: ${ap.avgDanceability.toFixed(2)}/1.0 → ${danceLabel}
+  - Tempo: ~${ap.avgTempo} BPM
+  - Akustiklik: ${ap.avgAcousticness.toFixed(2)}/1.0 → ${acousticLabel}`;
+  }
+
+  // ── Günün ritmi yorumu ───────────────────────────────────────────────────
+  const slots = ['morning', 'afternoon', 'evening', 'night'] as const;
+  const totalPlays = slots.reduce((s, k) => s + params.rhythmOfDay[k].count, 0);
+  const busiest = slots.reduce((a, b) => params.rhythmOfDay[a].count >= params.rhythmOfDay[b].count ? a : b);
+  const rhythmLines = slots.map((s) => {
+    const { count, dominantGenre } = params.rhythmOfDay[s];
+    const pct = totalPlays > 0 ? Math.round((count / totalPlays) * 100) : 0;
+    return `  ${SLOT_TR[s]}: ${count} parça (%${pct}) — dominant tür: ${dominantGenre || '—'}`;
+  });
+  const busiestLabel = SLOT_TR[busiest] ?? busiest;
+
+  // ── Cihazlar ─────────────────────────────────────────────────────────────
+  const deviceList = params.devices ?? [];
+  const activeDevice = deviceList.find((d) => d.isActive);
+  const devicesLine = deviceList.length > 0
+    ? deviceList.map((d) => `${TYPE_TR[d.type] ?? d.type} "${d.name}"${d.isActive ? ' (şu an aktif)' : ''}`).join(', ')
+    : 'Cihaz bilgisi yok';
+  const deviceContext = activeDevice
+    ? `Kullanıcı şu an ${TYPE_TR[activeDevice.type] ?? activeDevice.type} cihazında dinliyor.`
+    : `Kayıtlı cihazlar: ${devicesLine}`;
+
+  // ── Tekrar şarkıları ─────────────────────────────────────────────────────
+  const repeatedList = params.top10Repeated.length > 0
+    ? params.top10Repeated.map((r, i) => `  ${i + 1}. "${r.name}" - ${r.artist} (${r.count} kez tekrar)`)
+      .join('\n')
+    : '  Yok (hiçbir şarkı çok tekrar edilmemiş)';
+
+  // ── Son dinlenenler (zaman bilgisiyle) ───────────────────────────────────
+  const songsList = params.last50Songs.length > 0
+    ? params.last50Songs
+        .map((p, i) => {
+          const timeStr = p.playedAt
+            ? new Date(new Date(p.playedAt).getTime() + 3 * 3600000)
+                .toISOString().slice(11, 16) // UTC+3
+            : '-';
+          return `  ${i + 1}. "${p.name}" - ${p.artist} (${timeStr})`;
+        })
+        .join('\n')
+    : '  Veri yok';
 
   return `
-KULLANICI MÜZİK ANALİZİ (Son ${FORTUNE_LAST_DAYS} gün)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MÜZİK ANALİZ RAPORU — Son ${FORTUNE_LAST_DAYS} Gün
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-## Dinlenen ${FORTUNE_SONGS_COUNT} Şarkı (son dinlenenler)
-${songsList || '-'}
+## 1. MÜZİK TÜRLERİ (Spotify Top Charts ağırlıklı)
+${params.topGenres || 'Tür verisi yok'}
 
-## En Az ${FORTUNE_MIN_REPEATS} Kez Tekrar Dinlenen İlk ${FORTUNE_TOP_REPEATED_COUNT} Şarkı
-${repeatedList || '-'}
+## 2. SES PROFİLİ (Spotify Audio Features)
+${audioInterpretation}
+→ Yorumlama ipucu: Yüksek enerji + düşük valence = yoğun/karanlık. Düşük enerji + yüksek valence = sakin/mutlu.
 
-## En Çok Dinlenen Müzik Türleri
-${params.topGenres}
-
-## Günün Ritmi (saat dilimlerine göre dinleme + tür)
+## 3. DİNLEME RİTMİ (Türkiye saatiyle UTC+3)
+En yoğun dilim: ${busiestLabel} (${params.rhythmOfDay[busiest].count} parça)
 ${rhythmLines.join('\n')}
 
-## Ses Profili (Spotify Audio Features ortalaması, ${ap?.trackCount ?? 0} şarkı)
-${audioProfileLine}
+## 4. TEKRAR DİNLENEN ŞARKILAR (obsesyon göstergesi)
+${repeatedList}
 
-## Spotify Cihazları
-${devicesLine}
+## 5. SON ${FORTUNE_SONGS_COUNT} ŞARKI (dinleme zamanıyla)
+${songsList}
+
+## 6. CİHAZ BAĞLAMI
+${deviceContext}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `.trim();
 }
 
