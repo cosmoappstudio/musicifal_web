@@ -50,27 +50,52 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
     const supabase = createServiceClient();
+    const now = new Date().toISOString();
+    const profileData = {
+      email: profile.email ?? null,
+      name: profile.display_name ?? null,
+      avatar_url: profile.images?.[0]?.url ?? null,
+      updated_at: now,
+    };
 
-    // Upsert user
-    const { data: user, error: userError } = await supabase
+    // Check if user exists (by spotify_user_id)
+    const { data: existing } = await supabase
       .from('users')
-      .upsert(
-        {
-          spotify_user_id: profile.id,
-          email: profile.email ?? null,
-          name: profile.display_name ?? null,
-          avatar_url: profile.images?.[0]?.url ?? null,
-          plan: 'free',
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'spotify_user_id' }
-      )
       .select('id')
+      .eq('spotify_user_id', profile.id)
       .single();
 
-    if (userError || !user) {
-      console.error('User upsert error:', userError);
-      return NextResponse.redirect(`${BASE_URL}?error=user_create_failed`);
+    let user: { id: string } | null = null;
+
+    if (existing) {
+      // Existing user: update only profile fields, preserve plan (never overwrite)
+      const { data: updated, error: updateErr } = await supabase
+        .from('users')
+        .update(profileData)
+        .eq('id', existing.id)
+        .select('id')
+        .single();
+      if (updateErr) {
+        console.error('User update error:', updateErr);
+        return NextResponse.redirect(`${BASE_URL}?error=user_create_failed`);
+      }
+      user = updated;
+    } else {
+      // New user: insert with plan: 'free'
+      const { data: inserted, error: insertErr } = await supabase
+        .from('users')
+        .insert({
+          spotify_user_id: profile.id,
+          ...profileData,
+          plan: 'free',
+        })
+        .select('id')
+        .single();
+      if (insertErr || !inserted) {
+        console.error('User insert error:', insertErr);
+        return NextResponse.redirect(`${BASE_URL}?error=user_create_failed`);
+      }
+      user = inserted;
     }
 
     // Upsert tokens
