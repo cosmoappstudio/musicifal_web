@@ -75,6 +75,22 @@ export interface SpotifyDevice {
   supportsVolume: boolean;
 }
 
+/** Aggregate audio characteristics derived from Spotify audio features */
+export interface AudioProfile {
+  /** 0→1: 0 = sad/dark, 1 = happy/bright */
+  avgValence: number;
+  /** 0→1: 0 = calm/acoustic, 1 = energetic/loud */
+  avgEnergy: number;
+  /** 0→1: how suitable tracks are for dancing */
+  avgDanceability: number;
+  /** beats per minute */
+  avgTempo: number;
+  /** 0→1: 0 = electronic, 1 = acoustic */
+  avgAcousticness: number;
+  /** number of tracks analyzed */
+  trackCount: number;
+}
+
 export interface MockAnalysis {
   period: 'last_14_days';
   genres: GenreData[];
@@ -83,6 +99,7 @@ export interface MockAnalysis {
   topRepeated: TopRepeatedSong[];
   top50Songs: TopSong[];
   devices: SpotifyDevice[];
+  audioProfile: AudioProfile | null;
 }
 
 // ─── Fortune ───────────────────────────────────────────────────────────────────

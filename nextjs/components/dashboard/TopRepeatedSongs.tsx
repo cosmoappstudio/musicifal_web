@@ -84,12 +84,14 @@ export default function TopRepeatedSongs() {
               </h3>
               <p className="text-[#A598C7] text-xs mb-3">{song.artist}</p>
 
-              {/* Audio features */}
-              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/10">
-                <AudioPill label={t('energy')} value={song.energy} />
-                <AudioPill label={t('valence')} value={song.valence} />
-                <AudioPill label={t('danceability')} value={song.danceability} />
-              </div>
+              {/* Audio features — only show when real data available */}
+              {(song.energy > 0 || song.valence > 0 || song.danceability > 0) && (
+                <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/10">
+                  <AudioPill label={t('energy')} value={song.energy} />
+                  <AudioPill label={t('valence')} value={song.valence} />
+                  <AudioPill label={t('danceability')} value={song.danceability} />
+                </div>
+              )}
 
               <p className="text-[10px] text-[#A598C7] italic mt-3">
                 "{t('reveals')}"

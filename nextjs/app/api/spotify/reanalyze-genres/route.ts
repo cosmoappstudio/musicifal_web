@@ -16,7 +16,7 @@ export async function POST() {
 
   const { data: row } = await supabase
     .from('spotify_raw_data')
-    .select('id, recently_played, top_tracks_short, top_artists_short, devices')
+    .select('id, recently_played, top_tracks_short, top_artists_short, audio_features, devices')
     .eq('user_id', userId)
     .order('fetched_at', { ascending: false })
     .limit(1)
@@ -53,6 +53,7 @@ export async function POST() {
       recentlyPlayed: row.recently_played as Array<{ played_at?: string; track?: { id?: string; name?: string; artists?: { name?: string }[] } }>,
       genreAnalysis: genreAnalysis as { genres?: Array<{ name: string; percentage: number }>; songGenres?: Array<{ song: string; artist: string; genre: string }> },
       topArtistsShort: row.top_artists_short as { items?: Array<{ name?: string; genres?: string[] }> },
+      audioFeatures: row.audio_features as { audio_features?: Array<{ id?: string; valence?: number; energy?: number; danceability?: number; tempo?: number; acousticness?: number } | null> },
       devices: row.devices as { devices?: Array<{ name?: string; type?: string; is_active?: boolean }> },
     });
     await supabase

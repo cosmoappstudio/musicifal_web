@@ -65,11 +65,7 @@ export async function POST() {
         profile: data.profile as unknown as Record<string, unknown>,
         recently_played: data.recentlyPlayed as unknown as Record<string, unknown>[],
         top_artists_short: data.topArtistsShort as unknown as Record<string, unknown>,
-        top_artists_medium: data.topArtistsMedium as unknown as Record<string, unknown>,
-        top_artists_long: data.topArtistsLong as unknown as Record<string, unknown>,
         top_tracks_short: data.topTracksShort as unknown as Record<string, unknown>,
-        top_tracks_medium: data.topTracksMedium as unknown as Record<string, unknown>,
-        top_tracks_long: data.topTracksLong as unknown as Record<string, unknown>,
         audio_features: data.audioFeatures as unknown as Record<string, unknown>,
         devices: data.devices as unknown as Record<string, unknown>,
         fetched_at: fetchedAt,
@@ -90,6 +86,7 @@ export async function POST() {
       recentlyPlayed: data.recentlyPlayed as Array<{ played_at?: string; track?: { id?: string; name?: string; artists?: { name?: string }[] } }>,
       genreAnalysis: null,
       topArtistsShort: data.topArtistsShort as { items?: Array<{ name?: string; genres?: string[] }> },
+      audioFeatures: data.audioFeatures as { audio_features?: Array<{ id?: string; valence?: number; energy?: number; danceability?: number; tempo?: number; acousticness?: number; mode?: number } | null> },
       devices: data.devices as { devices?: Array<{ name?: string; type?: string; is_active?: boolean }> },
     });
     await supabase

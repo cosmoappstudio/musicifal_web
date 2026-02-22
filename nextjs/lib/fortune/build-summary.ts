@@ -18,6 +18,7 @@ export function getFortuneDataParamsDescription(): string {
 - En az ${FORTUNE_MIN_REPEATS} kez tekrar dinlediği ilk ${FORTUNE_TOP_REPEATED_COUNT} şarkı (isim, sanatçı, tekrar sayısı)
 - En çok dinlediği müzik türleri (yüzdelik dağılım)
 - Günün ritmi: Sabah (06-12), Öğleden sonra (12-18), Akşam (18-23), Gece (23-06) saat dilimlerinde kaç parça dinlemiş ve her dilimdeki dominant tür
+- Ses profili: ortalama valence (mutluluk/hüzün), energy (enerji), danceability (dans edebilirlik), tempo (BPM), acousticness (akustiklik) — 0-1 arası Spotify audio features
 - Kayıtlı Spotify cihazları (bilgisayar, telefon, TV gibi; hangi ortamda müzik dinlendiğine dair bağlam)`;
 }
 
@@ -32,6 +33,14 @@ export interface ComputedParams {
     evening: { count: number; dominantGenre: string };
     night: { count: number; dominantGenre: string };
   };
+  audioProfile?: {
+    avgValence: number;
+    avgEnergy: number;
+    avgDanceability: number;
+    avgTempo: number;
+    avgAcousticness: number;
+    trackCount: number;
+  };
   devices?: Array<{ name: string; type: string; isActive: boolean }>;
 }
 
@@ -40,9 +49,10 @@ export function computeFortuneParams(params: {
   recentlyPlayed: RawRecentlyPlayed[];
   genreAnalysis?: RawGenreAnalysis | null;
   topArtistsShort?: { items?: Array<{ name?: string; genres?: string[] }> };
+  audioFeatures?: { audio_features?: Array<{ id?: string; valence?: number; energy?: number; danceability?: number; tempo?: number; acousticness?: number } | null> };
   devices?: { devices?: Array<{ name?: string; type?: string; is_active?: boolean }> };
 }): ComputedParams {
-  const { recentlyPlayed, genreAnalysis, topArtistsShort, devices } = params;
+  const { recentlyPlayed, genreAnalysis, topArtistsShort, audioFeatures, devices } = params;
   const played = recentlyPlayed ?? [];
   const lastSongs = played.slice(0, FORTUNE_SONGS_COUNT);
   const songGenres = genreAnalysis?.songGenres ?? [];
@@ -82,6 +92,24 @@ export function computeFortuneParams(params: {
   const dominantGenre = (genres: Record<string, number>) =>
     Object.entries(genres).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '-';
 
+  // Audio profile: compute averages from all available audio features
+  const allFeatures = (audioFeatures?.audio_features ?? []).filter(Boolean) as Array<{ id?: string; valence?: number; energy?: number; danceability?: number; tempo?: number; acousticness?: number }>;
+  let audioProfile: ComputedParams['audioProfile'];
+  if (allFeatures.length > 0) {
+    const avg = (key: keyof typeof allFeatures[0]) => {
+      const vals = allFeatures.map((f) => f[key] as number).filter((v) => typeof v === 'number' && !isNaN(v));
+      return vals.length ? Math.round((vals.reduce((s, v) => s + v, 0) / vals.length) * 100) / 100 : 0;
+    };
+    audioProfile = {
+      avgValence: avg('valence'),
+      avgEnergy: avg('energy'),
+      avgDanceability: avg('danceability'),
+      avgTempo: Math.round(avg('tempo')),
+      avgAcousticness: avg('acousticness'),
+      trackCount: allFeatures.length,
+    };
+  }
+
   const deviceList = (devices?.devices ?? []).map((d) => ({
     name: d.name ?? '',
     type: d.type ?? '',
@@ -102,6 +130,7 @@ export function computeFortuneParams(params: {
       evening: { count: slots.evening.count, dominantGenre: dominantGenre(slots.evening.genres) },
       night: { count: slots.night.count, dominantGenre: dominantGenre(slots.night.genres) },
     },
+    audioProfile,
     devices: deviceList.length > 0 ? deviceList : undefined,
   };
 }
@@ -123,6 +152,11 @@ export function paramsToPromptText(params: ComputedParams): string {
     ? (params.devices ?? []).map((d) => `${TYPE_TR[d.type] ?? d.type} (${d.name})${d.isActive ? ' ← aktif' : ''}`).join(', ')
     : '-';
 
+  const ap = params.audioProfile;
+  const audioProfileLine = ap
+    ? `valence: ${ap.avgValence} (${ap.avgValence >= 0.6 ? 'mutlu/pozitif' : ap.avgValence <= 0.35 ? 'melankolik/karanlık' : 'nötr'}), energy: ${ap.avgEnergy} (${ap.avgEnergy >= 0.7 ? 'yüksek enerji' : ap.avgEnergy <= 0.35 ? 'sakin' : 'orta'}), danceability: ${ap.avgDanceability}, tempo: ${ap.avgTempo} BPM, acousticness: ${ap.avgAcousticness} (${ap.avgAcousticness >= 0.5 ? 'akustik ağırlıklı' : 'elektronik ağırlıklı'})`
+    : '-';
+
   return `
 KULLANICI MÜZİK ANALİZİ (Son ${FORTUNE_LAST_DAYS} gün)
 
@@ -137,6 +171,9 @@ ${params.topGenres}
 
 ## Günün Ritmi (saat dilimlerine göre dinleme + tür)
 ${rhythmLines.join('\n')}
+
+## Ses Profili (Spotify Audio Features ortalaması, ${ap?.trackCount ?? 0} şarkı)
+${audioProfileLine}
 
 ## Spotify Cihazları
 ${devicesLine}
