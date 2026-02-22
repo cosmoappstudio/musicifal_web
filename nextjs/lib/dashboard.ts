@@ -355,23 +355,33 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     if (g && isValidGenre(g)) slotGenres[slot][g] = (slotGenres[slot][g] ?? 0) + 1;
   });
 
-  // Dominant mood per slot from audio features (no genre names)
-  const slotMoodKey = (ids: string[]): string => {
-    const counts: Record<string, number> = {};
+  // Dominant mood per slot — primary: audio features; fallback: dominant genre → moodKey
+  const slotMoodKey = (ids: string[], genreCounts: Record<string, number>, fallbackIdx: number): string => {
+    // Try audio features first
+    const afCounts: Record<string, number> = {};
     ids.forEach((id) => {
       const af = featuresMap.get(id);
       if (!af || typeof af.energy !== 'number' || typeof af.valence !== 'number') return;
       const mk = trackMoodKey(af.energy, af.valence);
-      counts[mk] = (counts[mk] ?? 0) + 1;
+      afCounts[mk] = (afCounts[mk] ?? 0) + 1;
     });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+    const afTop = Object.entries(afCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (afTop) return afTop;
+
+    // Fallback: derive from dominant genre in this slot
+    const topGenre = Object.entries(genreCounts)
+      .filter(([n]) => isValidGenre(n))
+      .sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (topGenre) return genreMoodKey(topGenre, topTracksItems, songGenres, featuresMap, fallbackIdx);
+
+    return '';
   };
 
   const slotMoods = {
-    morning:   slotMoodKey(slotTrackIds.morning),
-    afternoon: slotMoodKey(slotTrackIds.afternoon),
-    evening:   slotMoodKey(slotTrackIds.evening),
-    night:     slotMoodKey(slotTrackIds.night),
+    morning:   slotMoodKey(slotTrackIds.morning,   slotGenres.morning,   0),
+    afternoon: slotMoodKey(slotTrackIds.afternoon, slotGenres.afternoon, 1),
+    evening:   slotMoodKey(slotTrackIds.evening,   slotGenres.evening,   2),
+    night:     slotMoodKey(slotTrackIds.night,     slotGenres.night,     3),
   };
 
   const slotLabel = (mk: string) => (mk ? MOOD_LABELS_TR[mk] ?? '—' : '—');
