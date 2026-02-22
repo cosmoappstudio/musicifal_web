@@ -9,21 +9,33 @@ import type { MockAnalysis, MockFortune } from '@/types';
 const COLORS = ['#7C3AED', '#A855F7', '#C084FC', '#E879F9', '#D97706', '#6B7280'];
 const MOOD_KEYS = ['introspective', 'calm', 'aggressive', 'emotional', 'peaceful', 'mixed'] as const;
 
+const ARTIST_ITEM = { name: string; images?: { url: string }[]; genres?: string[] };
+
 interface SpotifyRawData {
   profile?: { id?: string; display_name?: string; email?: string; images?: { url: string }[] } | null;
   recently_played?: Array<{
     played_at?: string;
     track?: { id: string; name: string; artists?: { name: string }[]; album?: { images?: { url: string }[] } };
   }> | null;
-  top_artists_short?: { items?: Array<{ name: string; images?: { url: string }[]; genres?: string[] }> } | null;
+  top_artists_short?: { items?: ARTIST_ITEM[] } | null;
+  top_artists_medium?: { items?: ARTIST_ITEM[] } | null;
+  top_artists_long?: { items?: ARTIST_ITEM[] } | null;
   top_tracks_short?: { items?: Array<{ id: string; name: string; artists?: { name: string }[]; album?: { images?: { url: string }[] }; popularity?: number }> } | null;
   fetched_at?: string;
 }
 
-function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null {
-  if (!raw?.top_artists_short?.items?.length) return null;
+function allArtistItems(raw: SpotifyRawData | null): ARTIST_ITEM[] {
+  const short = raw?.top_artists_short?.items ?? [];
+  const medium = raw?.top_artists_medium?.items ?? [];
+  const long = raw?.top_artists_long?.items ?? [];
+  return [...short, ...medium, ...long];
+}
 
-  const items = raw.top_artists_short.items;
+function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null {
+  const allArtists = allArtistItems(raw);
+  if (allArtists.length === 0) return null;
+
+  const items = allArtists; // use all for genre aggregation
   const genreCounts: Record<string, number> = {};
   items.forEach((a) => {
     (a.genres || []).forEach((g) => {
@@ -45,7 +57,8 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
     genres.push({ name: 'Other', percentage: 100 - genres.reduce((s, g) => s + g.percentage, 0), mood: '', moodKey: 'mixed', color: COLORS[5] });
   }
 
-  const topArtists = items.slice(0, 10).map((a, i) => ({
+  const topArtistsList = (raw?.top_artists_short?.items ?? allArtists).slice(0, 10);
+  const topArtists = topArtistsList.map((a, i) => ({
     rank: i + 1,
     name: a.name,
     playCount: 0,
@@ -137,7 +150,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
 
   const { data: rawRows } = await supabase
     .from('spotify_raw_data')
-    .select('profile, recently_played, top_artists_short, top_tracks_short, fetched_at')
+    .select('profile, recently_played, top_artists_short, top_artists_medium, top_artists_long, top_tracks_short, fetched_at')
     .eq('user_id', userId)
     .order('fetched_at', { ascending: false })
     .limit(1);
