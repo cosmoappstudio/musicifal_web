@@ -86,22 +86,31 @@ export async function POST() {
       );
     }
 
-    // Son 14 günde dinlenen 50 şarkı ile Replicate üzerinden genre analizi
     const { data: appSettings } = await supabase
       .from('app_settings')
       .select('replicate_model_id')
       .eq('id', 'default')
       .single();
-    const modelId = (appSettings?.replicate_model_id as string) || 'meta/meta-llama-3-8b-instruct';
+    const modelId = (appSettings?.replicate_model_id as string) || 'google/gemini-2.5-flash';
 
-    const last50 = data.recentlyPlayed.slice(0, 50).map((p: { played_at?: string; track?: { name?: string; artists?: { name?: string }[] } }) => ({
-      name: p.track?.name ?? '',
-      artist: p.track?.artists?.[0]?.name ?? '',
-      playedAt: p.played_at,
-    }));
+    // top_tracks_short (frekans sıralaması) + recently_played (zaman damgası) birleştir
+    // Deduplicate name|artist ile; Gemini her iki listedeki şarkıları analiz eder
+    const seen = new Set<string>();
+    const songsForAnalysis: Array<{ name: string; artist: string; playedAt?: string }> = [];
+    // Önce top_tracks (en çok dinlenenler önce)
+    (data.topTracksShort?.items ?? []).forEach((t: { name?: string; artists?: { name?: string }[] }) => {
+      const key = `${t.name ?? ''}|${t.artists?.[0]?.name ?? ''}`.toLowerCase();
+      if (!seen.has(key)) { seen.add(key); songsForAnalysis.push({ name: t.name ?? '', artist: t.artists?.[0]?.name ?? '' }); }
+    });
+    // Sonra recently_played (zaman bağlamı için)
+    data.recentlyPlayed.slice(0, 50).forEach((p: { played_at?: string; track?: { name?: string; artists?: { name?: string }[] } }) => {
+      const key = `${p.track?.name ?? ''}|${p.track?.artists?.[0]?.name ?? ''}`.toLowerCase();
+      if (!seen.has(key)) { seen.add(key); songsForAnalysis.push({ name: p.track?.name ?? '', artist: p.track?.artists?.[0]?.name ?? '', playedAt: p.played_at }); }
+    });
+    const last80 = songsForAnalysis.slice(0, 80);
     let genreAnalysis: Record<string, unknown> | null = null;
     try {
-      genreAnalysis = await analyzeGenres(last50, modelId) as unknown as Record<string, unknown>;
+      genreAnalysis = await analyzeGenres(last80, modelId) as unknown as Record<string, unknown>;
       const computedParams = computeFortuneParams({
         recentlyPlayed: data.recentlyPlayed as Array<{ played_at?: string; track?: { id?: string; name?: string; artists?: { name?: string }[] } }>,
         genreAnalysis: genreAnalysis as { genres?: Array<{ name: string; percentage: number }>; songGenres?: Array<{ song: string; artist: string; genre: string }> },

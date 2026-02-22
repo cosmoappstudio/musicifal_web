@@ -77,22 +77,31 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
 
   let genres: Array<{ name: string; percentage: number; mood: string; moodKey: string; color: string }> = [];
   const songGenres = raw?.genre_analysis?.songGenres ?? [];
+  const topTracksItems = raw?.top_tracks_short?.items ?? [];
 
-  if (songGenres.length && played.length) {
-    // song.name + artist ile genre eşle; her dinlenme için say (play ağırlıklı)
-    const genreCountsFromPlays: Record<string, number> = {};
+  if (songGenres.length && topTracksItems.length) {
+    // top_tracks_short rank-ağırlıklı: #1 = ağırlık 50, #50 = ağırlık 1
+    const genreWeights: Record<string, number> = {};
+    topTracksItems.slice(0, 50).forEach((t, i) => {
+      const g = getGenreForTrack(t.name ?? '', t.artists?.[0]?.name ?? '', songGenres).trim();
+      if (g && isValidGenre(g)) {
+        const weight = Math.max(1, 50 - i); // rank weight
+        genreWeights[g] = (genreWeights[g] ?? 0) + weight;
+      }
+    });
+    // Eşleşmeyen top track'lere ek olarak recently_played üzerinden de say (düşük ağırlık)
     played.forEach((p) => {
       const g = getGenreForTrack(p.track?.name ?? '', p.track?.artists?.[0]?.name ?? '', songGenres).trim();
       if (g && isValidGenre(g)) {
-        genreCountsFromPlays[g] = (genreCountsFromPlays[g] ?? 0) + 1;
+        genreWeights[g] = (genreWeights[g] ?? 0) + 1;
       }
     });
-    const entries = Object.entries(genreCountsFromPlays).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const entries = Object.entries(genreWeights).sort((a, b) => b[1] - a[1]).slice(0, 6);
     if (entries.length > 0) {
-      const total = Object.values(genreCountsFromPlays).reduce((a, b) => a + b, 0) || 1;
-      genres = entries.map(([name], i) => ({
+      const total = entries.reduce((s, [, w]) => s + w, 0) || 1;
+      genres = entries.map(([name, weight], i) => ({
         name,
-        percentage: Math.round((genreCountsFromPlays[name]! / total) * 100),
+        percentage: Math.round((weight / total) * 100),
         mood: '',
         moodKey: MOOD_KEYS[i % MOOD_KEYS.length],
         color: COLORS[i % COLORS.length],
@@ -196,7 +205,6 @@ function transformRawToAnalysis(raw: SpotifyRawData | null): MockAnalysis | null
 
   // top_tracks_short = son ~4 haftanın gerçek sıklık sıralaması
   // recently_played max 50 kayıt döndürdüğü için trackCounts güvenilmez
-  const topTracksItems = raw?.top_tracks_short?.items ?? [];
   const top50Songs = topTracksItems.slice(0, 50).map((t, i) => ({
     rank: i + 1,
     name: t.name ?? '',

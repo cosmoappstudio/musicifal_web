@@ -16,13 +16,13 @@ export async function POST() {
 
   const { data: row } = await supabase
     .from('spotify_raw_data')
-    .select('id, recently_played, top_artists_short')
+    .select('id, recently_played, top_tracks_short, top_artists_short')
     .eq('user_id', userId)
     .order('fetched_at', { ascending: false })
     .limit(1)
     .single();
 
-  if (!row?.recently_played?.length) {
+  if (!row?.recently_played?.length && !row?.top_tracks_short?.items?.length) {
     return NextResponse.json({ error: 'Veri bulunamadı. Önce Verilerimi Getir yapın.' }, { status: 400 });
   }
 
@@ -33,16 +33,22 @@ export async function POST() {
     .single();
   const modelId = (appSettings?.replicate_model_id as string) || 'google/gemini-2.5-flash';
 
-  const last50 = (row.recently_played as Array<{ played_at?: string; track?: { name?: string; artists?: { name?: string }[] } }>)
-    .slice(0, 50)
-    .map((p) => ({
-      name: p.track?.name ?? '',
-      artist: p.track?.artists?.[0]?.name ?? '',
-      playedAt: p.played_at,
-    }));
+  // top_tracks_short + recently_played birleşik, deduplicate
+  const seen = new Set<string>();
+  const songsForAnalysis: Array<{ name: string; artist: string; playedAt?: string }> = [];
+  (row.top_tracks_short?.items ?? []).forEach((t: { name?: string; artists?: { name?: string }[] }) => {
+    const key = `${t.name ?? ''}|${t.artists?.[0]?.name ?? ''}`.toLowerCase();
+    if (!seen.has(key)) { seen.add(key); songsForAnalysis.push({ name: t.name ?? '', artist: t.artists?.[0]?.name ?? '' }); }
+  });
+  (row.recently_played as Array<{ played_at?: string; track?: { name?: string; artists?: { name?: string }[] } }> ?? [])
+    .slice(0, 50).forEach((p) => {
+      const key = `${p.track?.name ?? ''}|${p.track?.artists?.[0]?.name ?? ''}`.toLowerCase();
+      if (!seen.has(key)) { seen.add(key); songsForAnalysis.push({ name: p.track?.name ?? '', artist: p.track?.artists?.[0]?.name ?? '', playedAt: p.played_at }); }
+    });
+  const songs = songsForAnalysis.slice(0, 80);
 
   try {
-    const genreAnalysis = await analyzeGenres(last50, modelId);
+    const genreAnalysis = await analyzeGenres(songs, modelId);
     const computedParams = computeFortuneParams({
       recentlyPlayed: row.recently_played as Array<{ played_at?: string; track?: { id?: string; name?: string; artists?: { name?: string }[] } }>,
       genreAnalysis: genreAnalysis as { genres?: Array<{ name: string; percentage: number }>; songGenres?: Array<{ song: string; artist: string; genre: string }> },
